@@ -1,4 +1,4 @@
-const HORIZONTAL_DELAY_FRAMES = 8;
+const HORIZONTAL_DELAY_FRAMES = 7;
 
 const LINE_CLEAR_DELAY = 500;
 const LOCK_DELAY = 500;
@@ -24,9 +24,7 @@ const GRAVITY = {
         262.00, 189.68, 134.73, 93.88, 64.15,
         42.98, 28.22, 18.15, 11.44, 7.06,
     ],
-    speed(lines) {
-        return this.SPEEDS[Math.min(lines / 10, 15)];
-    }
+
 };
 
 const SPRITES = {
@@ -367,28 +365,19 @@ const MODE = {
     PAUSE: "PAUSE",
 };
 
-const BEHAVIOR = {
-    FALLING: "FALLING",
-    LOCKING: "LOCKING",
-    CLEARING: "CLEARING",
-};
-
 class state {
     constructor() {
         this.activeBlock = new Block(TETRIMINO.EMPTY, 0, new Cell(0, 0));
-        this.holdBlock = new Block(TETRIMINO.EMPTY, 0, new Cell(0, 0));
+        this.heldTetrimino = TETRIMINO.EMPTY;
         this.heldBlock = false;
 
         this.mode = MODE.PLAY;
-        this.behavior = BEHAVIOR.FALLING;
         this.lines = 0;
         this.score = 0;
-        this.fallSpeed = GRAVITY.speed(0);
+        this.fallSpeed = GRAVITY.SPEEDS[0];
         this.lastFrameTime = Date.now();
         this.timeSinceLastFrame = 0;
         this.timeSinceLastDrop = 0;
-        this.timeSinceBeginLocking = 0;
-        this.rotationsDuringLock = 0;
         let canvas = document.getElementById("canvas");
         this.canvasContext = canvas.getContext("2d");
 
@@ -430,11 +419,13 @@ class state {
             return;
         }
 
-        let newHoldBlock = new Block(this.activeBlock.tetrimino);
-        if (this.holdBlock.tetrimino !== TETRIMINO.EMPTY) {
-            this.placeTetrimino(this.holdBlock.tetrimino);
+        let newHoldTetrimino = this.activeBlock.tetrimino;
+        if (this.heldTetrimino !== TETRIMINO.EMPTY) {
+            this.placeTetrimino(this.heldTetrimino);
+        } else {
+            this.spawnTetrimino();
         }
-        this.holdBlock = newHoldBlock;
+        this.heldTetrimino = newHoldTetrimino;
         // set this after place so that it is always false from here but true otherwise
         this.heldBlock = true;
 
@@ -453,8 +444,6 @@ class state {
             this.mode = MODE.GAME_OVER;
             return;
         }
-        this.behavior = BEHAVIOR.FALLING;
-        this.rotationsDuringLock = 0;
         this.heldBlock = false;
     }
 
@@ -466,8 +455,6 @@ class state {
         });
 
         this.clearLines(Array.from(affectedRows).sort());
-
-        this.activeBlock = new Block(TETRIMINO.EMPTY, 0, null);
         this.spawnTetrimino();
     }
 
@@ -502,6 +489,8 @@ class state {
                 TETRIMINO.EMPTY,
             ]);
         }
+        this.lines += clearedRows.length;
+        this.setSpeed();
     }
 
     checkHardDrop() {
@@ -529,9 +518,7 @@ class state {
             if (this.allAvailable(candidateBlock.cellLocations)) {
                 this.activeBlock = candidateBlock;
             } else {
-                this.timeSinceBeginLocking = 0;
-                this.rotationsDuringLock = 0;
-                this.behavior = BEHAVIOR.LOCKING;
+                this.lockTetrimino();
             }
         }
     }
@@ -556,24 +543,20 @@ class state {
 
     rotate() {
         if (this.rotationsDuringLock >= 15) {
-            return;
+            return false;
         }
 
         let rotateCW = Input.justPressed(Input.ROTATE_CW);
         let rotateCCW = Input.justPressed(Input.ROTATE_CCW);
         if (rotateCW == rotateCCW) {
-            return;
+            return false;
         }
 
         // Standard rotation
         let candidateBlock = rotateCW ? this.activeBlock.rotatedCW : this.activeBlock.rotatedCCW;
         if (this.allAvailable(candidateBlock.cellLocations)) {
             this.activeBlock = candidateBlock;
-            this.timeSinceBeginLocking = 0;
-            if (this.behavior == BEHAVIOR.LOCKING) {
-                this.rotationsDuringLock++;
-            }
-            return;
+            return true;
         }
 
         let kicks = KICK.kick(this.activeBlock.tetrimino, this.activeBlock.currentRotation, rotateCW);
@@ -583,13 +566,14 @@ class state {
             let kickedCandidate = candidateBlock.offsetBy(kick.row, kick.col);
             if (this.allAvailable(kickedCandidate.cellLocations)) {
                 this.activeBlock = kickedCandidate;
-                this.timeSinceBeginLocking = 0;
-                if (this.behavior == BEHAVIOR.LOCKING) {
-                    this.rotationsDuringLock++;
-                }
-                return;
+                return true;
             }
         }
+        return false;
+    }
+
+    setSpeed() {
+        this.fallSpeed = GRAVITY.SPEEDS[Math.min(Math.floor(this.lines / 10), 14)];
     }
 
     stepGame() {
@@ -598,21 +582,15 @@ class state {
             return;
         }
 
-        this.holdTetrimino();
-        if (this.behavior == BEHAVIOR.FALLING) {
-            this.rotate();
-            this.moveHorizontally();
-            this.dropTetrimino();
-        } else if (this.behavior == BEHAVIOR.LOCKING) {
-            if (this.checkHardDrop()) {
-                this.lockTetrimino();
-            }
-            this.rotate();
-
-            this.timeSinceBeginLocking += this.timeSinceLastFrame;
-            if (this.timeSinceBeginLocking > LOCK_DELAY) {
-                this.lockTetrimino();
-            }
+        if (this.holdTetrimino()) {
+            return;
+        }
+        this.dropTetrimino();
+        if (this.rotate()) {
+            return;
+        }
+        if (this.moveHorizontally()) {
+            return;
         }
     }
 
@@ -632,7 +610,11 @@ class state {
         // Draw hold
         this.canvasContext.fillStyle = "black";
         this.canvasContext.fillRect(HOLD_LEFT, HOLD_TOP, BLOCK_SIZE * 4, BLOCK_SIZE * 3);
-
+        if (this.heldTetrimino !== TETRIMINO.EMPTY) {
+            this.heldTetrimino.rotations[0].forEach(cell => {
+                this.drawBlock(this.heldTetrimino.sprite, HOLD_TOP, HOLD_LEFT, 16 + cell.row, cell.col);
+            });
+        }
 
         // Draw game state
         this.canvasContext.fillStyle = "black";
@@ -660,7 +642,7 @@ class state {
 
             let tetriminoTop = PREVIEW_TOP + i * 3 * BLOCK_SIZE;
             tetrimino.rotations[0].forEach(cell => {
-                this.drawBlock(tetrimino.sprite, tetriminoTop, PREVIEW_LEFT, 15 + cell.row, cell.col);
+                this.drawBlock(tetrimino.sprite, tetriminoTop, PREVIEW_LEFT, 16 + cell.row, cell.col);
             });
         }
     }
