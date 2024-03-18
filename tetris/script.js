@@ -11,6 +11,10 @@ const HOLD_TOP = 5;
 const HOLD_LEFT = 10;
 const HOLD_SIZE = 4 * BLOCK_SIZE;
 
+const STATS_TOP = HOLD_TOP + HOLD_SIZE + 20;
+const STATS_LEFT = HOLD_LEFT + 5;
+const STATS_ROW_SIZE = BLOCK_SIZE;
+
 const GRID_TOP = 5;
 const GRID_LEFT = HOLD_LEFT + HOLD_SIZE + 10;
 
@@ -24,8 +28,11 @@ const GRAVITY = {
         262.00, 189.68, 134.73, 93.88, 64.15,
         42.98, 28.22, 18.15, 11.44, 7.06,
     ],
-
 };
+
+function padNumToLength(num, length) {
+    return num.toString().padStart(length, " ");
+}
 
 const SPRITES = {
     CYAN() {
@@ -552,7 +559,6 @@ class state {
             return false;
         }
 
-        // Standard rotation
         let candidateBlock = rotateCW ? this.activeBlock.rotatedCW : this.activeBlock.rotatedCCW;
         if (this.allAvailable(candidateBlock.cellLocations)) {
             this.activeBlock = candidateBlock;
@@ -560,7 +566,6 @@ class state {
         }
 
         let kicks = KICK.kick(this.activeBlock.tetrimino, this.activeBlock.currentRotation, rotateCW);
-
         for (let i = 0; i < kicks.length; i++) {
             let kick = kicks[i];
             let kickedCandidate = candidateBlock.offsetBy(kick.row, kick.col);
@@ -572,8 +577,12 @@ class state {
         return false;
     }
 
+    get level() {
+        return Math.floor(this.lines / 10);
+    }
+
     setSpeed() {
-        this.fallSpeed = GRAVITY.SPEEDS[Math.min(Math.floor(this.lines / 10), 14)];
+        this.fallSpeed = GRAVITY.SPEEDS[Math.min(this.level, 14)];
     }
 
     stepGame() {
@@ -605,7 +614,6 @@ class state {
 
         let activeLocations = this.activeBlock.cellLocations;
         let ghostLocations = (this.activeBlock.tetrimino === TETRIMINO.EMPTY) ? [] : this.activeBlock.ghost.cellLocations;
-
 
         // Draw hold
         this.canvasContext.fillStyle = "black";
@@ -645,6 +653,12 @@ class state {
                 this.drawBlock(tetrimino.sprite, tetriminoTop, PREVIEW_LEFT, 16 + cell.row, cell.col);
             });
         }
+
+        // Draw stats
+        this.canvasContext.fillStyle = "black";
+        this.canvasContext.font = "16px courier";
+        this.canvasContext.fillText("Level: " + padNumToLength(this.level, 3), STATS_LEFT, STATS_TOP);
+        this.canvasContext.fillText("Lines: " + padNumToLength(this.lines, 3), STATS_LEFT, STATS_TOP + STATS_ROW_SIZE);
     }
 
     step() {
