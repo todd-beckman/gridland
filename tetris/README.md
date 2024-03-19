@@ -34,8 +34,9 @@ Bugs:
       Subseqeuent holds function as expected.
 
 Not implemented requirements of the Tetris Guideline:
+* Lock delay. This was originally in the game but kept causing problems.
 * Music and sound effects.
 * Only Keyboard control.
-* Score and line counter.
+* Score counter.
 * Pause.
 * Restart game.
