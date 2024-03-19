@@ -4,6 +4,8 @@ const GRID_SIZE = 30;
 const STARTING_LENGTH = 10;
 const LENGTH_INCREMEMENT_PER_APPLE = 2;
 const SPEED_PER_SECOND = 10;
+const SCORE_TOP = 20;
+const SCORE_LEFT = GRID_SIZE * (BLOCK_SIZE + BLOCK_PADDING) + 20;
 
 const Input = {
     LEFT: 0,
@@ -90,6 +92,7 @@ class State {
         this.length = STARTING_LENGTH;
         this.direction = DIRECTION.DOWN;
         this.lastMoveTime = Date.now();
+        this.score = 0;
 
         this.grid = [];
         for (let x = 0; x < GRID_SIZE; x++) {
@@ -156,6 +159,10 @@ class State {
                 this.drawBlock(x, y);
             }
         }
+
+        this.canvasContext.fillStyle = "black";
+        this.canvasContext.font = "16px courier";
+        this.canvasContext.fillText("Score: " + this.score, SCORE_LEFT, SCORE_TOP);
     }
 
     setDirection() {
@@ -195,6 +202,7 @@ class State {
 
         if (this.grid[nextLocation.x][nextLocation.y] == -1) {
             this.length += LENGTH_INCREMEMENT_PER_APPLE;
+            this.score++;
             this.placeApple();
         }
 
