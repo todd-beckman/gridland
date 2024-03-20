@@ -3,13 +3,15 @@ const PLAY_AREA_LEFT = 40;
 const PLAY_AREA_WIDTH = 480;
 const PLAY_AREA_HEIGHT = 480;
 const PLAYER_START_X = PLAY_AREA_WIDTH / 2;
-const PLAYER_START_Y = PLAY_AREA_HEIGHT / 3;
-const FOCUS_SPEED_PER_SECOND = 75;
-const FAST_SPEED_PER_SECOND = 150;
+const PLAYER_START_Y = PLAY_AREA_HEIGHT / 4;
+const FOCUS_SPEED = 0.1;
+const FAST_SPEED = 0.25;
 const HURTBOX_RADIUS = 4;
 const HURTBOX_RADIUS_SQUARED = HURTBOX_RADIUS * HURTBOX_RADIUS;
 const GRAZEBOX_RADIUS = 8;
 const GRAZEBOX_RADIUS_SQUARED = GRAZEBOX_RADIUS * GRAZEBOX_RADIUS;
+const FIRE_RATE = 0.25;
+const PLAYER_BULLET_SPEED = 0.5;
 const COLOR = {
     HURTBOX: "red",
     GRAZEBOX: "white",
@@ -74,6 +76,11 @@ class Input {
             case "ShiftLeft":
             case "ShiftRight":
                 Input.inputs[Input.FOCUS.id] = value;
+                break;
+            case "KeyZ":
+            case "KeyF":
+                Input.inputs[Input.SHOOT.id] = value;
+                break;
             default:
                 return;
         }
@@ -93,12 +100,13 @@ class Input {
         }
     }
 }
-Input.inputs = [0, 0, 0, 0, 0];
+Input.inputs = [0, 0, 0, 0, 0, 0];
 Input.LEFT = new Input(0);
 Input.RIGHT = new Input(1);
 Input.UP = new Input(2);
 Input.DOWN = new Input(3);
 Input.FOCUS = new Input(4);
+Input.SHOOT = new Input(5);
 ;
 var MODE;
 (function (MODE) {
@@ -106,15 +114,19 @@ var MODE;
     MODE["GAME_OVER"] = "GAME OVER";
 })(MODE || (MODE = {}));
 ;
-class State {
+class Player {
     constructor() {
-        Input.init();
-        this.mode = MODE.PLAY;
-        this.timeSinceLastFrame = 0;
-        this.lastFrameTime = Date.now();
-        this.canvas = document.getElementById("canvas");
-        this.ctx = this.canvas.getContext("2d");
-        this.playerLocation = new Vector(PLAYER_START_X, PLAYER_START_Y);
+        this.location = new Vector(PLAYER_START_X, PLAYER_START_Y);
+    }
+    move(msSinceLastFrame) {
+        this.location = this.pushIntoBounds(this.location.add(this.moveDirection.scale(this.moveSpeed(msSinceLastFrame))));
+    }
+    draw(ctx) {
+        let canvasLocation = this.location.toScreenSpace;
+        ctx.fillStyle = COLOR.GRAZEBOX;
+        ctx.fillRect(canvasLocation.x - GRAZEBOX_RADIUS, canvasLocation.y - GRAZEBOX_RADIUS, GRAZEBOX_RADIUS * 2, GRAZEBOX_RADIUS * 2);
+        ctx.fillStyle = COLOR.HURTBOX;
+        ctx.fillRect(canvasLocation.x - HURTBOX_RADIUS, canvasLocation.y - HURTBOX_RADIUS, HURTBOX_RADIUS * 2, HURTBOX_RADIUS * 2);
     }
     get moveDirection() {
         let up = Input.UP.held;
@@ -152,8 +164,8 @@ class State {
         }
         return Vector.ZERO;
     }
-    get moveSpeed() {
-        return (Input.FOCUS.held ? FOCUS_SPEED_PER_SECOND : FAST_SPEED_PER_SECOND) * this.timeSinceLastFrame / 1000;
+    moveSpeed(msSinceLastFrame) {
+        return (Input.FOCUS.held ? FOCUS_SPEED : FAST_SPEED) * msSinceLastFrame;
     }
     pushIntoBounds(location) {
         let newLocation = location;
@@ -171,29 +183,41 @@ class State {
         }
         return newLocation;
     }
-    movePlayer() {
-        this.playerLocation = this.pushIntoBounds(this.playerLocation.add(this.moveDirection.scale(this.moveSpeed)));
+}
+class State {
+    constructor() {
+        Input.init();
+        this.mode = MODE.PLAY;
+        this.msSinceLastFrame = 0;
+        this.frameTime = Date.now();
+        this.lastFireTime = 0;
+        this.player = new Player();
+        this.canvas = document.getElementById("canvas");
+        this.ctx = this.canvas.getContext("2d");
+    }
+    shoot() {
+        if (Input.SHOOT.held) {
+            if (this.lastFireTime + this.frameTime) {
+            }
+        }
+        else {
+            this.lastFireTime = 0;
+        }
     }
     stepGame() {
-        this.movePlayer();
-    }
-    drawPlayer() {
-        let canvasLocation = this.playerLocation.toScreenSpace;
-        this.ctx.fillStyle = COLOR.GRAZEBOX;
-        this.ctx.fillRect(canvasLocation.x - GRAZEBOX_RADIUS, canvasLocation.y - GRAZEBOX_RADIUS, GRAZEBOX_RADIUS * 2, GRAZEBOX_RADIUS * 2);
-        this.ctx.fillStyle = COLOR.HURTBOX;
-        this.ctx.fillRect(canvasLocation.x - HURTBOX_RADIUS, canvasLocation.y - HURTBOX_RADIUS, HURTBOX_RADIUS * 2, HURTBOX_RADIUS * 2);
+        this.player.move(this.msSinceLastFrame);
+        this.shoot();
     }
     draw() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.fillStyle = "black";
         this.ctx.fillRect(PLAY_AREA_LEFT, PLAY_AREA_TOP, PLAY_AREA_WIDTH, PLAY_AREA_HEIGHT);
-        this.drawPlayer();
+        this.player.draw(this.ctx);
     }
     step() {
         let now = Date.now();
-        this.timeSinceLastFrame = now - this.lastFrameTime;
-        this.lastFrameTime = now;
+        this.msSinceLastFrame = now - this.frameTime;
+        this.frameTime = now;
         if (this.mode === MODE.PLAY) {
             this.stepGame();
         }
@@ -206,6 +230,5 @@ class State {
 let state;
 function init() {
     state = new State();
-    Input.init();
     window.requestAnimationFrame(state.step.bind(state));
 }
