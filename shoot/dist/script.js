@@ -1,26 +1,34 @@
+const DEBUG = true;
 const PLAY_AREA_TOP = 0;
-const PLAY_AREA_LEFT = 40;
-const PLAY_AREA_WIDTH = 480;
-const PLAY_AREA_HEIGHT = 480;
+const PLAY_AREA_LEFT = 0;
+const PLAY_AREA_WIDTH = 550;
+const PLAY_AREA_HEIGHT = 600;
+const ITEM_GET_BORDER_LINE = PLAY_AREA_HEIGHT * 3 / 4;
 const PLAYER_START_X = PLAY_AREA_WIDTH / 2;
 const PLAYER_START_Y = PLAY_AREA_HEIGHT / 4;
-const FOCUS_SPEED = 0.125;
+const FOCUS_SPEED = 0.10;
 const FAST_SPEED = 0.25;
 const HURTBOX_RADIUS = 4;
 const HURTBOX_RADIUS_SQUARED = HURTBOX_RADIUS * HURTBOX_RADIUS;
 const GRAZEBOX_RADIUS = 8;
 const GRAZEBOX_RADIUS_SQUARED = GRAZEBOX_RADIUS * GRAZEBOX_RADIUS;
-const FIRE_RATE = 100;
+const ITEMBOX_RADIUS = 20;
+const ITEMBOX_RADIUS_SQUARED = ITEMBOX_RADIUS * ITEMBOX_RADIUS;
+const FIRE_RATE = 70;
 const PLAYER_BULLET_SPEED = 0.5;
-const PLAYER_BULLET_RADIUS = 5;
 const PLAYER_BULLET_SPREAD = 17;
 const PLAYER_BULLET_ANGLE = 0.2;
 const PLAYER_BULLET_FOCUS_ANGLE = 0.05;
 const PLAYER_BULLET_OFFSET_SPAWN = PLAYER_BULLET_SPREAD / 2;
+const PLAYER_BULLET_RADIUS = 5;
+const PLAYER_BULLET_RADIUS_SQUARED = PLAYER_BULLET_RADIUS * PLAYER_BULLET_RADIUS;
+const ITEM_RADIUS = 20;
+const ITEM_RADIUS_SQUARED = ITEM_RADIUS * ITEM_RADIUS;
 var COLOR;
 (function (COLOR) {
     COLOR["HURTBOX"] = "red";
     COLOR["GRAZEBOX"] = "yellow";
+    COLOR["ITEMBOX"] = "green";
     COLOR["BULLET"] = "rgb(128,128,128)";
 })(COLOR || (COLOR = {}));
 ;
@@ -32,14 +40,34 @@ class Vector {
     add(other) {
         return new Vector(this.x + other.x, this.y + other.y);
     }
+    addX(x) {
+        return new Vector(this.x + x, this.y);
+    }
+    addY(y) {
+        return new Vector(this.x, this.y + y);
+    }
+    subtract(other) {
+        return new Vector(this.x - other.x, this.y - other.y);
+    }
     scale(scalar) {
         return new Vector(this.x * scalar, this.y * scalar);
+    }
+    distanceSquared(other) {
+        let x = this.x - other.x;
+        let y = this.y - other.y;
+        return x * x + y * y;
     }
     get toString() {
         return "(" + this.x + "," + this.y + ")";
     }
     get toScreenSpace() {
         return new Vector(this.x, -this.y).add(Vector.ORIGIN);
+    }
+    get magnitude() {
+        return Math.sqrt(this.x * this.x + this.y * this.y);
+    }
+    get toUnit() {
+        return this.scale(1 / this.magnitude);
     }
 }
 Vector.ZERO = new Vector(0, 0);
@@ -64,27 +92,30 @@ class Input {
         switch (e.code) {
             case "ArrowUp":
             case "KeyW":
-                Input.inputs[Input.UP.id] = value;
+                Input.inputs.set(Input.UP.id, value);
                 break;
             case "ArrowLeft":
             case "KeyA":
-                Input.inputs[Input.LEFT.id] = value;
+                Input.inputs.set(Input.LEFT.id, value);
                 break;
             case "ArrowRight":
             case "KeyD":
-                Input.inputs[Input.RIGHT.id] = value;
+                Input.inputs.set(Input.RIGHT.id, value);
                 break;
             case "ArrowDown":
             case "KeyS":
-                Input.inputs[Input.DOWN.id] = value;
+                Input.inputs.set(Input.DOWN.id, value);
                 break;
             case "ShiftLeft":
             case "ShiftRight":
-                Input.inputs[Input.FOCUS.id] = value;
+                Input.inputs.set(Input.FOCUS.id, value);
                 break;
             case "KeyZ":
             case "KeyF":
-                Input.inputs[Input.SHOOT.id] = value;
+                Input.inputs.set(Input.SHOOT.id, value);
+                break;
+            case "KeyI":
+                Input.inputs.set(Input.DEBUG_SPAWN_ITEM.id, value);
                 break;
             default:
                 return;
@@ -95,23 +126,24 @@ class Input {
         window.addEventListener("keydown", this.keyHandler.bind(this), true);
     }
     get held() {
-        return Input.inputs[this.id];
+        return Input.inputs.get(this.id);
     }
     static onFrameEnd() {
-        for (let i = 0; i < this.inputs.length; i++) {
-            if (this.inputs[i]) {
-                this.inputs[i]++;
+        this.inputs.forEach((value, key) => {
+            if (value > 0) {
+                this.inputs.set(key, value + 1);
             }
-        }
+        });
     }
 }
-Input.inputs = [0, 0, 0, 0, 0, 0];
-Input.LEFT = new Input(0);
-Input.RIGHT = new Input(1);
-Input.UP = new Input(2);
-Input.DOWN = new Input(3);
-Input.FOCUS = new Input(4);
-Input.SHOOT = new Input(5);
+Input.inputs = new Map();
+Input.LEFT = new Input("LEFT");
+Input.RIGHT = new Input("RIGHT");
+Input.UP = new Input("UP");
+Input.DOWN = new Input("DOWN");
+Input.FOCUS = new Input("FOCUS");
+Input.SHOOT = new Input("SHOOT");
+Input.DEBUG_SPAWN_ITEM = new Input("DEBUG_SPAWN_ITEM");
 ;
 var MODE;
 (function (MODE) {
@@ -119,6 +151,9 @@ var MODE;
     MODE["GAME_OVER"] = "GAME OVER";
 })(MODE || (MODE = {}));
 class Player {
+    get radiusSquared() {
+        return HURTBOX_RADIUS_SQUARED;
+    }
     constructor() {
         this.location = new Vector(PLAYER_START_X, PLAYER_START_Y);
     }
@@ -128,6 +163,8 @@ class Player {
     }
     draw(ctx) {
         let canvasLocation = this.location.toScreenSpace;
+        ctx.fillStyle = COLOR.ITEMBOX;
+        ctx.fillRect(canvasLocation.x - ITEMBOX_RADIUS, canvasLocation.y - ITEMBOX_RADIUS, ITEMBOX_RADIUS * 2, ITEMBOX_RADIUS * 2);
         ctx.fillStyle = COLOR.GRAZEBOX;
         ctx.fillRect(canvasLocation.x - GRAZEBOX_RADIUS, canvasLocation.y - GRAZEBOX_RADIUS, GRAZEBOX_RADIUS * 2, GRAZEBOX_RADIUS * 2);
         ctx.fillStyle = COLOR.HURTBOX;
@@ -188,8 +225,14 @@ class Player {
         }
         return newLocation;
     }
+    collides(otherLocation, otherRadiusSquared) {
+        return this.location.distanceSquared(otherLocation) <= this.radiusSquared + otherRadiusSquared;
+    }
 }
 class PlayerBullet {
+    get radiusSquared() {
+        return PLAYER_BULLET_RADIUS_SQUARED;
+    }
     constructor(location, direction) {
         this.location = location;
         this.direction = direction;
@@ -208,6 +251,74 @@ class PlayerBullet {
         ctx.fillStyle = COLOR.BULLET;
         ctx.fillRect(canvasLocation.x - PLAYER_BULLET_RADIUS / 2, canvasLocation.y - PLAYER_BULLET_RADIUS / 2, PLAYER_BULLET_RADIUS, PLAYER_BULLET_RADIUS);
     }
+    collides(otherLocation, otherRadiusSquared) {
+        return this.location.distanceSquared(otherLocation) <= this.radiusSquared + otherRadiusSquared;
+    }
+}
+class Item {
+    get radiusSquared() {
+        return ITEM_RADIUS_SQUARED;
+    }
+    constructor(location) {
+        this.shouldChasePlayer = false;
+        this.location = location;
+        let spread = (Math.random() - 0.5) * Item.SPAWN_SPREAD;
+        this.velocity = new Vector(spread, Item.SPAWN_VERTICAL_SPEED);
+    }
+    chasePlayer() {
+        this.shouldChasePlayer = true;
+    }
+    moveOrDelete(msSinceLastFrame) {
+        if (this.shouldChasePlayer) {
+            this.chasePlayerOrDelete(msSinceLastFrame);
+            return false;
+        }
+        return this.fallOrDelete(msSinceLastFrame);
+    }
+    chasePlayerOrDelete(msSinceLastFrame) {
+        let vectorToPlayer = state.player.location.subtract(this.location);
+        this.velocity = vectorToPlayer.toUnit.scale(Item.CHASE_SPEED * msSinceLastFrame);
+        this.location = this.location.add(this.velocity);
+    }
+    fallOrDelete(msSinceLastFrame) {
+        let newVelocity = this.velocity.add(Item.ACCELERATION.scale(msSinceLastFrame));
+        this.velocity = new Vector(newVelocity.x * Item.SPREAD_REDUCTION, newVelocity.y);
+        if (this.velocity.y < Item.MAX_VELOCITY.y) {
+            this.velocity = Item.MAX_VELOCITY;
+        }
+        this.location = this.location.add(this.velocity);
+        return this.location.y <= -10;
+    }
+    collides(otherLocation, otherRadiusSquared) {
+        return this.location.distanceSquared(otherLocation) <= ITEMBOX_RADIUS_SQUARED + otherRadiusSquared;
+    }
+    draw(ctx) {
+        let canvasLocation = this.location.toScreenSpace;
+        ctx.fillStyle = this.color;
+        ctx.fillRect(canvasLocation.x - ITEM_RADIUS / 2, canvasLocation.y - ITEM_RADIUS / 2, ITEMBOX_RADIUS, ITEMBOX_RADIUS);
+    }
+}
+Item.ACCELERATION = new Vector(0, -0.001);
+Item.MAX_VELOCITY = new Vector(0, -5);
+Item.CHASE_SPEED = 0.40;
+Item.SPAWN_VERTICAL_SPEED = 1;
+Item.SPAWN_SPREAD = 1;
+Item.SPREAD_REDUCTION = 0.99;
+class PowerItem extends Item {
+    get color() {
+        return "red";
+    }
+    onCollect() {
+        state.collectPowerItem();
+    }
+}
+class PointItem extends Item {
+    get color() {
+        return "blue";
+    }
+    onCollect() {
+        state.collectPointItem();
+    }
 }
 class State {
     constructor() {
@@ -219,6 +330,9 @@ class State {
         this.player = new Player();
         this.playerBullets = [];
         this.powerLevel = 0;
+        this.score = 0;
+        this.items = [];
+        this.debugItemSpawnTime = Date.now();
         this.canvas = document.getElementById("canvas");
         this.ctx = this.canvas.getContext("2d");
     }
@@ -279,13 +393,59 @@ class State {
             this.lastFireTime = 0;
         }
     }
+    collectItems() {
+        this.items.forEach(i => i.chasePlayer());
+    }
+    spawnPowerItem(location) {
+        this.items.push(new PowerItem(location));
+    }
+    collectPowerItem() {
+        this.powerLevel = Math.min(40, this.powerLevel + 1);
+    }
+    spawnPointItem(location) {
+        this.items.push(new PointItem(location));
+    }
+    collectPointItem() {
+        this.score += 1000 * (this.player.location.y / PLAY_AREA_HEIGHT);
+    }
+    debug() {
+        if (!DEBUG) {
+            return;
+        }
+        if (Input.DEBUG_SPAWN_ITEM.held) {
+            if (100 <= this.frameTime - this.debugItemSpawnTime) {
+                if (Math.random() < 0.5) {
+                    this.spawnPowerItem(this.player.location.add(new Vector(0, 200)));
+                }
+                else {
+                    this.spawnPointItem(this.player.location.add(new Vector(0, 200)));
+                }
+                this.debugItemSpawnTime = Date.now();
+            }
+        }
+    }
     stepGame() {
+        this.debug();
         this.player.moveOrDelete(this.msSinceLastFrame);
         this.shoot();
         // Read backwards to prevent concurrent modification
         for (let i = this.playerBullets.length - 1; i >= 0; i--) {
             if (this.playerBullets[i].moveOrDelete(this.msSinceLastFrame)) {
                 this.playerBullets.splice(i, 1);
+            }
+        }
+        if (this.player.location.y >= ITEM_GET_BORDER_LINE) {
+            this.collectItems();
+        }
+        for (let i = this.items.length - 1; i >= 0; i--) {
+            if (this.items[i].moveOrDelete(this.msSinceLastFrame)) {
+                this.items.splice(i, 1);
+            }
+        }
+        for (let i = this.items.length - 1; i >= 0; i--) {
+            if (this.items[i].collides(this.player.location, ITEMBOX_RADIUS_SQUARED)) {
+                this.items[i].onCollect();
+                this.items.splice(i, 1);
             }
         }
     }
@@ -295,6 +455,7 @@ class State {
         this.ctx.fillRect(PLAY_AREA_LEFT, PLAY_AREA_TOP, PLAY_AREA_WIDTH, PLAY_AREA_HEIGHT);
         this.player.draw(this.ctx);
         this.playerBullets.forEach(b => b.draw(this.ctx));
+        this.items.forEach(i => i.draw(this.ctx));
     }
     step() {
         let now = Date.now();
