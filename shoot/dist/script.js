@@ -10,11 +10,13 @@ const HURTBOX_RADIUS = 4;
 const HURTBOX_RADIUS_SQUARED = HURTBOX_RADIUS * HURTBOX_RADIUS;
 const GRAZEBOX_RADIUS = 8;
 const GRAZEBOX_RADIUS_SQUARED = GRAZEBOX_RADIUS * GRAZEBOX_RADIUS;
-const FIRE_RATE = 0.25;
+const FIRE_RATE = 100;
 const PLAYER_BULLET_SPEED = 0.5;
+const PLAYER_BULLET_RADIUS = 2;
 const COLOR = {
     HURTBOX: "red",
-    GRAZEBOX: "white",
+    GRAZEBOX: "yellow",
+    BULLET: "white",
 };
 class Vector {
     constructor(x, y) {
@@ -118,8 +120,9 @@ class Player {
     constructor() {
         this.location = new Vector(PLAYER_START_X, PLAYER_START_Y);
     }
-    move(msSinceLastFrame) {
+    moveOrDelete(msSinceLastFrame) {
         this.location = this.pushIntoBounds(this.location.add(this.moveDirection.scale(this.moveSpeed(msSinceLastFrame))));
+        return false;
     }
     draw(ctx) {
         let canvasLocation = this.location.toScreenSpace;
@@ -184,6 +187,24 @@ class Player {
         return newLocation;
     }
 }
+class PlayerBullet {
+    constructor(location) {
+        this.location = location;
+    }
+    moveOrDelete(msSinceLastFrame) {
+        let newLocation = this.location.add(new Vector(0, PLAYER_BULLET_SPEED).scale(msSinceLastFrame));
+        if (newLocation.y > PLAY_AREA_HEIGHT) {
+            return true;
+        }
+        this.location = newLocation;
+        return false;
+    }
+    draw(ctx) {
+        let canvasLocation = this.location.toScreenSpace;
+        ctx.fillStyle = COLOR.BULLET;
+        ctx.fillRect(canvasLocation.x + PLAYER_BULLET_RADIUS / 2, canvasLocation.y + PLAYER_BULLET_RADIUS / 2, PLAYER_BULLET_RADIUS, PLAYER_BULLET_RADIUS);
+    }
+}
 class State {
     constructor() {
         Input.init();
@@ -192,12 +213,15 @@ class State {
         this.frameTime = Date.now();
         this.lastFireTime = 0;
         this.player = new Player();
+        this.playerBullets = [];
         this.canvas = document.getElementById("canvas");
         this.ctx = this.canvas.getContext("2d");
     }
     shoot() {
         if (Input.SHOOT.held) {
-            if (this.lastFireTime + this.frameTime) {
+            if (FIRE_RATE <= this.frameTime - this.lastFireTime) {
+                this.playerBullets.push(new PlayerBullet(this.player.location));
+                this.lastFireTime = Date.now();
             }
         }
         else {
@@ -205,14 +229,21 @@ class State {
         }
     }
     stepGame() {
-        this.player.move(this.msSinceLastFrame);
+        this.player.moveOrDelete(this.msSinceLastFrame);
         this.shoot();
+        // Read backwards to prevent concurrent modification
+        for (let i = this.playerBullets.length - 1; i >= 0; i--) {
+            if (this.playerBullets[i].moveOrDelete(this.msSinceLastFrame)) {
+                this.playerBullets.splice(i, 1);
+            }
+        }
     }
     draw() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.fillStyle = "black";
         this.ctx.fillRect(PLAY_AREA_LEFT, PLAY_AREA_TOP, PLAY_AREA_WIDTH, PLAY_AREA_HEIGHT);
         this.player.draw(this.ctx);
+        this.playerBullets.forEach(b => b.draw(this.ctx));
     }
     step() {
         let now = Date.now();
