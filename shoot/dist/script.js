@@ -4,7 +4,7 @@ const PLAY_AREA_WIDTH = 480;
 const PLAY_AREA_HEIGHT = 480;
 const PLAYER_START_X = PLAY_AREA_WIDTH / 2;
 const PLAYER_START_Y = PLAY_AREA_HEIGHT / 4;
-const FOCUS_SPEED = 0.1;
+const FOCUS_SPEED = 0.125;
 const FAST_SPEED = 0.25;
 const HURTBOX_RADIUS = 4;
 const HURTBOX_RADIUS_SQUARED = HURTBOX_RADIUS * HURTBOX_RADIUS;
@@ -12,12 +12,17 @@ const GRAZEBOX_RADIUS = 8;
 const GRAZEBOX_RADIUS_SQUARED = GRAZEBOX_RADIUS * GRAZEBOX_RADIUS;
 const FIRE_RATE = 100;
 const PLAYER_BULLET_SPEED = 0.5;
-const PLAYER_BULLET_RADIUS = 2;
-const COLOR = {
-    HURTBOX: "red",
-    GRAZEBOX: "yellow",
-    BULLET: "white",
-};
+const PLAYER_BULLET_RADIUS = 5;
+const PLAYER_BULLET_SPREAD = 20;
+const PLAYER_BULLET_ANGLE = 0.2;
+const PLAYER_BULLET_FOCUS_ANGLE = 0.05;
+var COLOR;
+(function (COLOR) {
+    COLOR["HURTBOX"] = "red";
+    COLOR["GRAZEBOX"] = "yellow";
+    COLOR["BULLET"] = "rgb(128,128,128)";
+})(COLOR || (COLOR = {}));
+;
 class Vector {
     constructor(x, y) {
         this.x = x;
@@ -188,11 +193,13 @@ class Player {
     }
 }
 class PlayerBullet {
-    constructor(location) {
+    constructor(location, direction) {
         this.location = location;
+        this.direction = direction;
     }
     moveOrDelete(msSinceLastFrame) {
-        let newLocation = this.location.add(new Vector(0, PLAYER_BULLET_SPEED).scale(msSinceLastFrame));
+        let newLocation = this.location.add(this.direction.scale(PLAYER_BULLET_SPEED)
+            .scale(msSinceLastFrame));
         if (newLocation.y > PLAY_AREA_HEIGHT) {
             return true;
         }
@@ -202,7 +209,7 @@ class PlayerBullet {
     draw(ctx) {
         let canvasLocation = this.location.toScreenSpace;
         ctx.fillStyle = COLOR.BULLET;
-        ctx.fillRect(canvasLocation.x + PLAYER_BULLET_RADIUS / 2, canvasLocation.y + PLAYER_BULLET_RADIUS / 2, PLAYER_BULLET_RADIUS, PLAYER_BULLET_RADIUS);
+        ctx.fillRect(canvasLocation.x - PLAYER_BULLET_RADIUS / 2, canvasLocation.y - PLAYER_BULLET_RADIUS / 2, PLAYER_BULLET_RADIUS, PLAYER_BULLET_RADIUS);
     }
 }
 class State {
@@ -220,7 +227,12 @@ class State {
     shoot() {
         if (Input.SHOOT.held) {
             if (FIRE_RATE <= this.frameTime - this.lastFireTime) {
-                this.playerBullets.push(new PlayerBullet(this.player.location));
+                this.playerBullets.push(new PlayerBullet(this.player.location.add(new Vector(PLAYER_BULLET_SPREAD / 2, 0)), Vector.UP));
+                this.playerBullets.push(new PlayerBullet(this.player.location.add(new Vector(-PLAYER_BULLET_SPREAD / 2, 0)), Vector.UP));
+                // this should only be done for certain power levels
+                let spreadAngle = Input.FOCUS.held ? PLAYER_BULLET_FOCUS_ANGLE : PLAYER_BULLET_ANGLE;
+                this.playerBullets.push(new PlayerBullet(this.player.location.add(new Vector(PLAYER_BULLET_SPREAD / 2, 0)), new Vector(spreadAngle, 1)));
+                this.playerBullets.push(new PlayerBullet(this.player.location.add(new Vector(-PLAYER_BULLET_SPREAD / 2, 0)), new Vector(-spreadAngle, 1)));
                 this.lastFireTime = Date.now();
             }
         }
