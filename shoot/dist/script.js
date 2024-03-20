@@ -13,9 +13,10 @@ const GRAZEBOX_RADIUS_SQUARED = GRAZEBOX_RADIUS * GRAZEBOX_RADIUS;
 const FIRE_RATE = 100;
 const PLAYER_BULLET_SPEED = 0.5;
 const PLAYER_BULLET_RADIUS = 5;
-const PLAYER_BULLET_SPREAD = 20;
+const PLAYER_BULLET_SPREAD = 17;
 const PLAYER_BULLET_ANGLE = 0.2;
 const PLAYER_BULLET_FOCUS_ANGLE = 0.05;
+const PLAYER_BULLET_OFFSET_SPAWN = PLAYER_BULLET_SPREAD / 2;
 var COLOR;
 (function (COLOR) {
     COLOR["HURTBOX"] = "red";
@@ -51,9 +52,6 @@ Vector.DOWN_LEFT = new Vector(-1 / Math.SQRT2, -1 / Math.SQRT2);
 Vector.LEFT = new Vector(-1, 0);
 Vector.UP_LEFT = new Vector(-1 / Math.SQRT2, 1 / Math.SQRT2);
 Vector.ORIGIN = new Vector(PLAY_AREA_LEFT, PLAY_AREA_TOP + PLAY_AREA_HEIGHT);
-function V(x, y) {
-    return new Vector(x, y);
-}
 class Input {
     constructor(id) {
         this.id = id;
@@ -120,7 +118,6 @@ var MODE;
     MODE["PLAY"] = "PLAY";
     MODE["GAME_OVER"] = "GAME OVER";
 })(MODE || (MODE = {}));
-;
 class Player {
     constructor() {
         this.location = new Vector(PLAYER_START_X, PLAYER_START_Y);
@@ -221,18 +218,60 @@ class State {
         this.lastFireTime = 0;
         this.player = new Player();
         this.playerBullets = [];
+        this.powerLevel = 0;
         this.canvas = document.getElementById("canvas");
         this.ctx = this.canvas.getContext("2d");
+    }
+    get powerTier() {
+        if (this.powerLevel < 10) {
+            return 0;
+        }
+        if (this.powerLevel < 20) {
+            return 1;
+        }
+        if (this.powerLevel < 30) {
+            return 2;
+        }
+        return 3;
+    }
+    get playerLeftBulletSpawn() {
+        return this.player.location.add(new Vector(-PLAYER_BULLET_OFFSET_SPAWN, 0));
+    }
+    get playerRightBulletSpawn() {
+        return this.player.location.add(new Vector(PLAYER_BULLET_OFFSET_SPAWN, 0));
+    }
+    spawnCenterStream() {
+        this.playerBullets.push(new PlayerBullet(this.player.location, Vector.UP));
+    }
+    spawnSideStreams(spreadAngle) {
+        this.playerBullets.push(new PlayerBullet(this.playerLeftBulletSpawn, new Vector(-spreadAngle, 1)));
+        this.playerBullets.push(new PlayerBullet(this.playerRightBulletSpawn, new Vector(spreadAngle, 1)));
+    }
+    spawnPlayerBullets() {
+        let spreadAngle = Input.FOCUS.held ? PLAYER_BULLET_FOCUS_ANGLE : PLAYER_BULLET_ANGLE;
+        switch (this.powerTier) {
+            case 0:
+                this.spawnSideStreams(0);
+                break;
+            case 1:
+                this.spawnCenterStream();
+                this.spawnSideStreams(spreadAngle);
+                break;
+            case 2:
+                this.spawnSideStreams(0);
+                this.spawnSideStreams(spreadAngle);
+                break;
+            case 3:
+                this.spawnSideStreams(0);
+                this.spawnSideStreams(spreadAngle);
+                this.spawnSideStreams(spreadAngle * 2);
+                break;
+        }
     }
     shoot() {
         if (Input.SHOOT.held) {
             if (FIRE_RATE <= this.frameTime - this.lastFireTime) {
-                this.playerBullets.push(new PlayerBullet(this.player.location.add(new Vector(PLAYER_BULLET_SPREAD / 2, 0)), Vector.UP));
-                this.playerBullets.push(new PlayerBullet(this.player.location.add(new Vector(-PLAYER_BULLET_SPREAD / 2, 0)), Vector.UP));
-                // this should only be done for certain power levels
-                let spreadAngle = Input.FOCUS.held ? PLAYER_BULLET_FOCUS_ANGLE : PLAYER_BULLET_ANGLE;
-                this.playerBullets.push(new PlayerBullet(this.player.location.add(new Vector(PLAYER_BULLET_SPREAD / 2, 0)), new Vector(spreadAngle, 1)));
-                this.playerBullets.push(new PlayerBullet(this.player.location.add(new Vector(-PLAYER_BULLET_SPREAD / 2, 0)), new Vector(-spreadAngle, 1)));
+                this.spawnPlayerBullets();
                 this.lastFireTime = Date.now();
             }
         }
