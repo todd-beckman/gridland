@@ -1,8 +1,8 @@
 {
     "compilerOptions": {
-        "module": "commonjs",
+        "module": "AMD",
         "target": "ES6",
-        "outDir": "dist",
+        "outFile": "dist/script.js",
         "rootDir": "src"
     }
 }
