@@ -26,7 +26,7 @@ export abstract class Enemy extends Actor {
     }
 
     updateOrDelete(game: Game, msSinceLastFrame: number): boolean {
-        if (game.outOfBounds(this.location, this.radius)) {
+        if (game.outOfBounds(this.location, this.radius, true)) {
             return true;
         }
 

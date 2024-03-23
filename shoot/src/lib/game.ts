@@ -22,14 +22,25 @@ function scoreToString(score: number): string {
     return billionsSegment + "," + millionsSegment + "," + thousandsSegment;
 }
 
+function extendToString(extend: number): string {
+    return "".padStart(extend, "*");
+}
+
 function powerToString(power: number): string {
-    return "".padStart(power - 3, " ").padEnd(power + 1, "*");
+    return "".padStart(power + 1, "*");
 }
 
 export class Game {
     static readonly HUD_TOP = Global.PLAY_AREA_TOP + 20;
     static readonly HUD_LEFT = Global.PLAY_AREA_LEFT + Global.PLAY_AREA_WIDTH + 5;
     static readonly HUD_ROW_HEIGHT = Global.PLAY_AREA_HEIGHT / 20;
+    static readonly SCORE_THRESHOLDS = [
+        10000000,
+        20000000,
+        40000000,
+        80000000,
+        160000000,
+    ];
 
     private frameTime: number = Date.now();
     private readonly canvas: HTMLCanvasElement;
@@ -40,6 +51,7 @@ export class Game {
     msSinceLastFrame: number = 0;
     mode: MODE = MODE.PLAY;
     private score: number = 0;
+    private extend: number = 2;
 
     player: Player = new Player();
     playerBullets: PlayerBullet[] = [];
@@ -75,11 +87,34 @@ export class Game {
     }
 
     addScore(add: number): void {
+        let oldScore = this.score;
         this.score = Math.floor(this.score + add);
+
+        for (let i = 0; i < Game.SCORE_THRESHOLDS.length; i++) {
+            let nextScoreThreshold = Game.SCORE_THRESHOLDS[i];
+            if (oldScore < nextScoreThreshold && this.score >= nextScoreThreshold) {
+                this.extend++;
+                return;
+            }
+        }
     }
 
     spawnEnemy(enemy: Enemy): void {
         this.enemies.push(enemy);
+    }
+
+    takeDamage(powerLevelOnDeath: number) {
+        if (this.extend <= 0) {
+            this.mode = MODE.GAME_OVER;
+            return;
+        }
+        this.extend--;
+
+        let powerDrops = powerLevelOnDeath * 2 / 3;
+        for (let i = 0; i < powerDrops; i++) {
+            this.spawnItem(new PowerItem(this.player.location));
+        }
+        this.player.location = new Vector(Player.START_X, Player.START_Y);
     }
 
     // UTILITIES
@@ -87,15 +122,19 @@ export class Game {
     /**
      * @returns whether the bounding box of the given circle is outside of the playable area.
      */
-    outOfBounds(location: Vector, radius: number): boolean {
+    outOfBounds(location: Vector, radius: number, allowTop?: boolean): boolean {
         let left = location.x - radius;
         let right = location.x + radius
         let bottom = location.y - radius;
         let top = location.y + radius
-
-        return left > Global.PLAY_AREA_WIDTH ||
-            bottom > Global.PLAY_AREA_HEIGHT ||
-            top < 0 || right < 0;
+        if (left > Global.PLAY_AREA_WIDTH ||
+            top < 0 || right < 0) {
+            return true;
+        }
+        if (allowTop) {
+            return false;
+        }
+        return bottom > Global.PLAY_AREA_HEIGHT;
     }
 
     // INTERNAL
@@ -152,13 +191,19 @@ export class Game {
     }
 
     private drawHUD(): void {
-        this.ctx.fillStyle = "blue";
         this.ctx.font = "20px courier";
+
         let row = 0;
-        this.ctx.fillText("Score: " + scoreToString(this.score), Game.HUD_LEFT, Game.HUD_TOP + row * Game.HUD_ROW_HEIGHT);
-        this.ctx.fillStyle = "red";
+        this.ctx.fillStyle = "purple";
+        this.ctx.fillText("Extend: " + extendToString(this.extend), Game.HUD_LEFT, Game.HUD_TOP + row * Game.HUD_ROW_HEIGHT);
+
         row++;
-        this.ctx.fillText("Power: " + powerToString(this.player.powerTier), Game.HUD_LEFT, Game.HUD_TOP + row * Game.HUD_ROW_HEIGHT);
+        this.ctx.fillStyle = "blue";
+        this.ctx.fillText("Score:  " + scoreToString(this.score), Game.HUD_LEFT, Game.HUD_TOP + row * Game.HUD_ROW_HEIGHT);
+
+        row++;
+        this.ctx.fillStyle = "red";
+        this.ctx.fillText("Power:  " + powerToString(this.player.powerTier), Game.HUD_LEFT, Game.HUD_TOP + row * Game.HUD_ROW_HEIGHT);
     }
 
     private draw(): void {

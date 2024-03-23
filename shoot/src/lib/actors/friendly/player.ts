@@ -27,8 +27,8 @@ export class Player extends Actor {
     static readonly BULLET_FOCUS_ANGLE = 0.05;
 
     static readonly HURTBOX = "red";
-    static readonly GRAZEBOX = "yellow";
-    static readonly ITEMBOX = "green";
+    static readonly GRAZEBOX = "orange";
+    static readonly ITEMBOX = "yellow";
     static readonly ITEM_GET_BORDER_LINE = Global.PLAY_AREA_HEIGHT * 3 / 4;
 
     private powerLevel: number = 0;
@@ -59,6 +59,14 @@ export class Player extends Actor {
             if (this.collides(game.items[i])) {
                 game.items[i].onCollect(game);
                 game.items.splice(i, 1);
+            }
+        }
+
+        for (let i = game.enemies.length - 1; i >= 0; i--) {
+            if (this.collides(game.enemies[i])) {
+                let oldPowerLevel = this.powerLevel;
+                this.powerLevel = 0;
+                game.takeDamage(oldPowerLevel);
             }
         }
 

@@ -322,7 +322,7 @@ define("lib/actors/friendly/item", ["require", "exports", "lib/util/vector", "li
                 this.velocity = Item.MAX_VELOCITY;
             }
             this.location = this.location.add(this.velocity);
-            return game.outOfBounds(this.location, this.radius);
+            return game.outOfBounds(this.location, this.radius, true);
         }
         draw(ctx) {
             let canvasLocation = this.location.toScreenSpace;
@@ -472,6 +472,13 @@ define("lib/actors/friendly/player", ["require", "exports", "lib/util/vector", "
                     game.items.splice(i, 1);
                 }
             }
+            for (let i = game.enemies.length - 1; i >= 0; i--) {
+                if (this.collides(game.enemies[i])) {
+                    let oldPowerLevel = this.powerLevel;
+                    this.powerLevel = 0;
+                    game.takeDamage(oldPowerLevel);
+                }
+            }
             return false;
         }
         draw(ctx) {
@@ -618,8 +625,8 @@ define("lib/actors/friendly/player", ["require", "exports", "lib/util/vector", "
     Player.BULLET_ANGLE = 0.2;
     Player.BULLET_FOCUS_ANGLE = 0.05;
     Player.HURTBOX = "red";
-    Player.GRAZEBOX = "yellow";
-    Player.ITEMBOX = "green";
+    Player.GRAZEBOX = "orange";
+    Player.ITEMBOX = "yellow";
     Player.ITEM_GET_BORDER_LINE = global_2.Global.PLAY_AREA_HEIGHT * 3 / 4;
 });
 define("lib/util/path", ["require", "exports"], function (require, exports) {
@@ -657,7 +664,7 @@ define("lib/actors/enemies/enemy", ["require", "exports", "lib/actors/actor"], f
             this.health = Math.max(this.health - damage, 0);
         }
         updateOrDelete(game, msSinceLastFrame) {
-            if (game.outOfBounds(this.location, this.radius)) {
+            if (game.outOfBounds(this.location, this.radius, true)) {
                 return true;
             }
             if (this.health <= 0) {
@@ -693,9 +700,9 @@ define("lib/actors/enemies/basic_mob", ["require", "exports", "lib/actors/enemie
         }
     }
     exports.BasicMob = BasicMob;
-    BasicMob.RADIUS = 20;
+    BasicMob.RADIUS = 50;
     BasicMob.RADIUS_SQUARED = BasicMob.RADIUS * BasicMob.RADIUS;
-    BasicMob.COLOR = "purple";
+    BasicMob.COLOR = "green";
 });
 define("lib/util/fps", ["require", "exports", "lib/util/global", "lib/util/with_cooldown"], function (require, exports, global_3, with_cooldown_2) {
     "use strict";
@@ -739,8 +746,11 @@ define("lib/game", ["require", "exports", "lib/util/global", "lib/util/input", "
         let billionsSegment = Math.floor((score / 1000000) % 1000).toString().padStart(3, " ");
         return billionsSegment + "," + millionsSegment + "," + thousandsSegment;
     }
+    function extendToString(extend) {
+        return "".padStart(extend, "*");
+    }
     function powerToString(power) {
-        return "".padStart(power - 3, " ").padEnd(power + 1, "*");
+        return "".padStart(power + 1, "*");
     }
     class Game {
         constructor() {
@@ -750,6 +760,7 @@ define("lib/game", ["require", "exports", "lib/util/global", "lib/util/input", "
             this.msSinceLastFrame = 0;
             this.mode = MODE.PLAY;
             this.score = 0;
+            this.extend = 2;
             this.player = new player_1.Player();
             this.playerBullets = [];
             this.items = [];
@@ -778,23 +789,48 @@ define("lib/game", ["require", "exports", "lib/util/global", "lib/util/input", "
             items.forEach(item => this.spawnItem(item, location));
         }
         addScore(add) {
+            let oldScore = this.score;
             this.score = Math.floor(this.score + add);
+            for (let i = 0; i < Game.SCORE_THRESHOLDS.length; i++) {
+                let nextScoreThreshold = Game.SCORE_THRESHOLDS[i];
+                if (oldScore < nextScoreThreshold && this.score >= nextScoreThreshold) {
+                    this.extend++;
+                    return;
+                }
+            }
         }
         spawnEnemy(enemy) {
             this.enemies.push(enemy);
+        }
+        takeDamage(powerLevelOnDeath) {
+            if (this.extend <= 0) {
+                this.mode = MODE.GAME_OVER;
+                return;
+            }
+            this.extend--;
+            let powerDrops = powerLevelOnDeath * 2 / 3;
+            for (let i = 0; i < powerDrops; i++) {
+                this.spawnItem(new item_1.PowerItem(this.player.location));
+            }
+            this.player.location = new vector_3.Vector(player_1.Player.START_X, player_1.Player.START_Y);
         }
         // UTILITIES
         /**
          * @returns whether the bounding box of the given circle is outside of the playable area.
          */
-        outOfBounds(location, radius) {
+        outOfBounds(location, radius, allowTop) {
             let left = location.x - radius;
             let right = location.x + radius;
             let bottom = location.y - radius;
             let top = location.y + radius;
-            return left > global_4.Global.PLAY_AREA_WIDTH ||
-                bottom > global_4.Global.PLAY_AREA_HEIGHT ||
-                top < 0 || right < 0;
+            if (left > global_4.Global.PLAY_AREA_WIDTH ||
+                top < 0 || right < 0) {
+                return true;
+            }
+            if (allowTop) {
+                return false;
+            }
+            return bottom > global_4.Global.PLAY_AREA_HEIGHT;
         }
         // INTERNAL
         debug() {
@@ -840,13 +876,16 @@ define("lib/game", ["require", "exports", "lib/util/global", "lib/util/input", "
             }
         }
         drawHUD() {
-            this.ctx.fillStyle = "blue";
             this.ctx.font = "20px courier";
             let row = 0;
-            this.ctx.fillText("Score: " + scoreToString(this.score), Game.HUD_LEFT, Game.HUD_TOP + row * Game.HUD_ROW_HEIGHT);
-            this.ctx.fillStyle = "red";
+            this.ctx.fillStyle = "purple";
+            this.ctx.fillText("Extend: " + extendToString(this.extend), Game.HUD_LEFT, Game.HUD_TOP + row * Game.HUD_ROW_HEIGHT);
             row++;
-            this.ctx.fillText("Power: " + powerToString(this.player.powerTier), Game.HUD_LEFT, Game.HUD_TOP + row * Game.HUD_ROW_HEIGHT);
+            this.ctx.fillStyle = "blue";
+            this.ctx.fillText("Score:  " + scoreToString(this.score), Game.HUD_LEFT, Game.HUD_TOP + row * Game.HUD_ROW_HEIGHT);
+            row++;
+            this.ctx.fillStyle = "red";
+            this.ctx.fillText("Power:  " + powerToString(this.player.powerTier), Game.HUD_LEFT, Game.HUD_TOP + row * Game.HUD_ROW_HEIGHT);
         }
         draw() {
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -878,9 +917,20 @@ define("lib/game", ["require", "exports", "lib/util/global", "lib/util/input", "
     Game.HUD_TOP = global_4.Global.PLAY_AREA_TOP + 20;
     Game.HUD_LEFT = global_4.Global.PLAY_AREA_LEFT + global_4.Global.PLAY_AREA_WIDTH + 5;
     Game.HUD_ROW_HEIGHT = global_4.Global.PLAY_AREA_HEIGHT / 20;
+    Game.SCORE_THRESHOLDS = [
+        10000000,
+        20000000,
+        40000000,
+        80000000,
+        160000000,
+    ];
 });
 define("script", ["require", "exports", "lib/game"], function (require, exports, game_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     const game = new game_1.Game();
+});
+define("lib/util/scriptable", ["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
 });

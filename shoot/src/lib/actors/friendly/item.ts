@@ -59,7 +59,7 @@ export abstract class Item extends Actor {
         }
         this.location = this.location.add(this.velocity);
 
-        return game.outOfBounds(this.location, this.radius);
+        return game.outOfBounds(this.location, this.radius, true);
     }
 
     abstract get color(): string;

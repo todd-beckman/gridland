@@ -3,9 +3,9 @@ import { Item } from "../friendly/item";
 import { Enemy } from "./enemy";
 
 export class BasicMob extends Enemy {
-    static readonly RADIUS = 20;
+    static readonly RADIUS = 50;
     static readonly RADIUS_SQUARED = BasicMob.RADIUS * BasicMob.RADIUS;
-    static readonly COLOR = "purple";
+    static readonly COLOR = "green";
 
     get radius() {
         return BasicMob.RADIUS;
