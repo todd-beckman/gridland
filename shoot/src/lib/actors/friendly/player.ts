@@ -6,7 +6,7 @@ import { PlayerBullet } from "./player_bullet";
 import { Game } from "../../game";
 import { WithCooldown } from "../../util/with_cooldown";
 
-export class Player implements Actor {
+export class Player extends Actor {
     static readonly FIRE_RATE = 70;
     static readonly FOCUS_SPEED = 0.10;
     static readonly FAST_SPEED = 0.25;
@@ -36,6 +36,9 @@ export class Player implements Actor {
 
     location: Vector = new Vector(Player.START_X, Player.START_Y);
 
+    get radius(): number {
+        return Player.HURTBOX_RADIUS;
+    }
     get radiusSquared(): number {
         return Player.HURTBOX_RADIUS_SQUARED;
     }
@@ -53,7 +56,7 @@ export class Player implements Actor {
         }
 
         for (let i = game.items.length - 1; i >= 0; i--) {
-            if (game.items[i].collides(this.location, Player.ITEMBOX_RADIUS_SQUARED)) {
+            if (this.collides(game.items[i])) {
                 game.items[i].onCollect(game);
                 game.items.splice(i, 1);
             }
@@ -100,10 +103,6 @@ export class Player implements Actor {
         game.addScore(percent * 10000);
     }
 
-    collides(otherLocation: Vector, otherRadiusSquared: number): boolean {
-        return this.location.distanceSquared(otherLocation) <= this.radiusSquared + otherRadiusSquared;
-    }
-
     get powerTier() {
         if (this.powerLevel < 10) {
             return 0;
@@ -118,7 +117,6 @@ export class Player implements Actor {
     }
 
     private get playerLeftBulletSpawn(): Vector {
-
         return this.location.add(new Vector(-Player.BULLET_OFFSET_SPAWN, 0));
     }
 

@@ -1,12 +1,15 @@
 import { Game } from "../game";
 import { Vector } from "../util/vector";
 
-export interface Actor {
-    get location(): Vector;
-    get radiusSquared(): number;
+export abstract class Actor {
+    abstract get location(): Vector;
+    abstract get radius(): number;
+    abstract get radiusSquared(): number;
 
-    updateOrDelete(game: Game, msSinceLastFrame: number): boolean;
-    draw(ctx: CanvasRenderingContext2D): void;
+    abstract updateOrDelete(game: Game, msSinceLastFrame: number): boolean;
+    abstract draw(ctx: CanvasRenderingContext2D): void;
 
-    collides(otherLocation: Vector, otherRadiusSquared: number): boolean;
+    collides(other: Actor): boolean {
+        return this.location.distanceSquared(other.location) <= this.radiusSquared + other.radiusSquared;
+    }
 }

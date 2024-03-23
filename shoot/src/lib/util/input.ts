@@ -52,7 +52,7 @@ export class Input {
      * Tracks how many frame any Debug input has been held.
      */
 
-    static DEBUG_SPAWN_ITEM = new Input("DEBUG_SPAWN_ITEM");
+    static DEBUG_ACTION = new Input("DEBUG_ACTION");
 
     private static keyHandler(e: KeyboardEvent) {
         if (e.defaultPrevented || e.repeat) {
@@ -87,7 +87,7 @@ export class Input {
                 Input.inputs.set(Input.SHOOT.id, value);
                 break;
             case "KeyI":
-                Input.inputs.set(Input.DEBUG_SPAWN_ITEM.id, value);
+                Input.inputs.set(Input.DEBUG_ACTION.id, value);
                 break;
             default:
                 return;

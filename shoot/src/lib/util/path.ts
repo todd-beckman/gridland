@@ -1,26 +1,20 @@
 import { Vector } from "./vector";
 
 export abstract class Path {
-    private msTraveledTotal: number = 0;
-
-    location(msSinceLastFrame: number): Vector {
-        this.msTraveledTotal += msSinceLastFrame;
-
-        return this.locationSinceSpawn(this.msTraveledTotal);
-    }
-
     abstract locationSinceSpawn(msTraveledTotal: number): Vector;
 }
 
 export class LinearPath extends Path {
+    private startingLocation: Vector
     private readonly velocityPerMs: Vector;
 
-    constructor(velocityPerMs: Vector) {
+    constructor(startingLocation: Vector, velocityPerMs: Vector) {
         super();
+        this.startingLocation = startingLocation;
         this.velocityPerMs = velocityPerMs;
     }
 
     locationSinceSpawn(msTraveledTotal: number): Vector {
-        return this.velocityPerMs.scale(msTraveledTotal);
+        return this.startingLocation.add(this.velocityPerMs.scale(msTraveledTotal));
     }
 }

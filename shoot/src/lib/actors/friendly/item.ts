@@ -2,7 +2,7 @@ import { Vector } from "../../util/vector";
 import { Actor } from "actor";
 import { Game } from "../../game";
 
-export abstract class Item implements Actor {
+export abstract class Item extends Actor {
     static readonly RADIUS = 20
     static readonly RADIUS_SQUARED = Item.RADIUS * Item.RADIUS;
 
@@ -10,12 +10,15 @@ export abstract class Item implements Actor {
     static MAX_VELOCITY = new Vector(0, -5);
     static CHASE_SPEED = 0.40;
 
-    static SPAWN_VERTICAL_SPEED = 1;
+    static SPAWN_VERTICAL_SPEED = 2;
     static SPAWN_SPREAD = 1;
     static SPREAD_REDUCTION = 0.99;
 
     private shouldChasePlayer: boolean = false;
 
+    get radius() {
+        return Item.RADIUS;
+    }
     get radiusSquared() {
         return Item.RADIUS_SQUARED;
     }
@@ -23,6 +26,7 @@ export abstract class Item implements Actor {
     location: Vector;
     velocity: Vector;
     constructor(location: Vector) {
+        super();
         this.location = location;
         let spread = (Math.random() - 0.5) * Item.SPAWN_SPREAD;
         this.velocity = new Vector(spread, Item.SPAWN_VERTICAL_SPEED);
@@ -34,19 +38,19 @@ export abstract class Item implements Actor {
 
     updateOrDelete(game: Game, msSinceLastFrame: number): boolean {
         if (this.shouldChasePlayer) {
-            this.chasePlayerOrDelete(game, msSinceLastFrame);
+            this.doChasePlayer(game, msSinceLastFrame);
             return false;
         }
-        return this.fallOrDelete(msSinceLastFrame);
+        return this.fallOrDelete(game, msSinceLastFrame);
     }
 
-    private chasePlayerOrDelete(game: Game, msSinceLastFrame: number): void {
+    private doChasePlayer(game: Game, msSinceLastFrame: number): void {
         let vectorToPlayer = game.player.location.subtract(this.location);
         this.velocity = vectorToPlayer.toUnit.scale(Item.CHASE_SPEED * msSinceLastFrame);
         this.location = this.location.add(this.velocity);
     }
 
-    private fallOrDelete(msSinceLastFrame: number): boolean {
+    private fallOrDelete(game: Game, msSinceLastFrame: number): boolean {
         let newVelocity = this.velocity.add(Item.ACCELERATION.scale(msSinceLastFrame));
         this.velocity = new Vector(newVelocity.x * Item.SPREAD_REDUCTION, newVelocity.y);
 
@@ -55,14 +59,10 @@ export abstract class Item implements Actor {
         }
         this.location = this.location.add(this.velocity);
 
-        return this.location.y <= -10;
+        return game.outOfBounds(this.location, this.radius);
     }
 
     abstract get color(): string;
-
-    collides(otherLocation: Vector, otherRadiusSquared: number): boolean {
-        return this.location.distanceSquared(otherLocation) <= Item.RADIUS_SQUARED + otherRadiusSquared;
-    }
 
     abstract onCollect(game: Game): void;
 
