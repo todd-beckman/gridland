@@ -1,5 +1,5 @@
-import { Game } from "./game";
-import { Vector } from "./vector";
+import { Game } from "../game";
+import { Vector } from "../util/vector";
 
 export interface Actor {
     get location(): Vector;

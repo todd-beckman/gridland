@@ -1,9 +1,10 @@
-import { Vector } from "./vector";
-import { Actor } from "./actor";
-import { Global } from "./global";
-import { Input } from "./input";
+import { Vector } from "../../util/vector";
+import { Actor } from "actor";
+import { Global } from "../../util/global";
+import { Input } from "../../util/input";
 import { PlayerBullet } from "./player_bullet";
-import { Game } from "./game";
+import { Game } from "../../game";
+import { WithCooldown } from "../../util/with_cooldown";
 
 export class Player implements Actor {
     static readonly FIRE_RATE = 70;
@@ -31,7 +32,8 @@ export class Player implements Actor {
     static readonly ITEM_GET_BORDER_LINE = Global.PLAY_AREA_HEIGHT * 3 / 4;
 
     private powerLevel: number = 0;
-    private fireCooldown: number = 0;
+    private fire = new WithCooldown(Player.FIRE_RATE);
+
     location: Vector = new Vector(Player.START_X, Player.START_Y);
 
     get radiusSquared(): number {
@@ -88,12 +90,31 @@ export class Player implements Actor {
         );
     }
 
-    collectPowerItem() {
+    collectPowerItem(game: Game) {
         this.powerLevel = Math.min(40, this.powerLevel + 1);
+        game.addScore(100);
     }
 
     collectPointItem(game: Game) {
-        game.score += (this.location.y / Global.PLAY_AREA_HEIGHT) * 1000;
+        let percent = Math.min(this.location.y, Player.ITEM_GET_BORDER_LINE) / Player.ITEM_GET_BORDER_LINE;
+        game.addScore(percent * 10000);
+    }
+
+    collides(otherLocation: Vector, otherRadiusSquared: number): boolean {
+        return this.location.distanceSquared(otherLocation) <= this.radiusSquared + otherRadiusSquared;
+    }
+
+    get powerTier() {
+        if (this.powerLevel < 10) {
+            return 0;
+        }
+        if (this.powerLevel < 20) {
+            return 1;
+        }
+        if (this.powerLevel < 30) {
+            return 2;
+        }
+        return 3;
     }
 
     private get playerLeftBulletSpawn(): Vector {
@@ -107,19 +128,6 @@ export class Player implements Actor {
 
     private collectItems(game: Game) {
         game.items.forEach(i => i.chasePlayer());
-    }
-
-    private get powerTier() {
-        if (this.powerLevel < 10) {
-            return 0;
-        }
-        if (this.powerLevel < 20) {
-            return 1;
-        }
-        if (this.powerLevel < 30) {
-            return 2;
-        }
-        return 3;
     }
 
     private spawnCenterStream(game: Game): void {
@@ -155,13 +163,8 @@ export class Player implements Actor {
     }
 
     private shoot(game: Game, msSinceLastFrame: number): void {
-        this.fireCooldown = Math.max(this.fireCooldown - msSinceLastFrame, 0);
-
-        if (Input.SHOOT.held) {
-            if (this.fireCooldown == 0) {
-                this.spawnPlayerBullets(game);
-                this.fireCooldown = Player.FIRE_RATE;
-            }
+        if (Input.SHOOT.held && this.fire.checkAndTrigger(msSinceLastFrame)) {
+            this.spawnPlayerBullets(game);
         }
     }
 
@@ -223,9 +226,5 @@ export class Player implements Actor {
             newLocation = new Vector(newLocation.x, Global.PLAY_AREA_HEIGHT - Player.GRAZEBOX_RADIUS);
         }
         return newLocation;
-    }
-
-    collides(otherLocation: Vector, otherRadiusSquared: number): boolean {
-        return this.location.distanceSquared(otherLocation) <= this.radiusSquared + otherRadiusSquared;
     }
 }

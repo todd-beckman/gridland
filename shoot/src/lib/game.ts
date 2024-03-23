@@ -1,23 +1,40 @@
-import { Global } from "./global";
-import { Input } from "./input";
-import { Item, PointItem, PowerItem } from "./item";
-import { Player } from "./player";
-import { PlayerBullet } from "./player_bullet";
-import { Vector } from "./vector";
+import { Global } from "./util/global";
+import { Input } from "./util/input";
+import { Item, PointItem, PowerItem } from "./actors/friendly/item";
+import { Player } from "./actors/friendly/player";
+import { PlayerBullet } from "./actors/friendly/player_bullet";
+import { Vector } from "./util/vector";
+import { WithCooldown } from "./util/with_cooldown";
 
 enum MODE {
     PLAY = "PLAY",
     GAME_OVER = "GAME OVER",
 }
 
+function scoreToString(score: number): string {
+    let thousandsSegment = Math.floor(score % 1000).toString().padStart(3, "0");
+    let millionsSegment = Math.floor((score / 1000) % 1000).toString().padStart(3, "0");
+    let billionsSegment = Math.floor((score / 1000000) % 1000).toString().padStart(3, " ");
+    return billionsSegment + "," + millionsSegment + "," + thousandsSegment;
+}
+
+function powerToString(power: number): string {
+    return "".padStart(power - 3, " ").padEnd(power + 1, "*");
+}
+
 export class Game {
+    static readonly HUD_TOP = Global.PLAY_AREA_TOP + 20;
+    static readonly HUD_LEFT = Global.PLAY_AREA_LEFT + Global.PLAY_AREA_WIDTH + 5;
+    static readonly HUD_ROW_HEIGHT = Global.PLAY_AREA_HEIGHT / 20;
+
     private frameTime: number = Date.now();
-    private debugItemSpawnTime: number = 0;
     private readonly canvas: HTMLCanvasElement;
     private readonly ctx: CanvasRenderingContext2D;
+    private readonly doDebug = new WithCooldown(100);
+
     msSinceLastFrame: number = 0;
     mode: MODE = MODE.PLAY;
-    score: number;
+    private score: number = 0;
 
     player: Player = new Player();
     playerBullets: PlayerBullet[] = [];
@@ -42,18 +59,14 @@ export class Game {
             return;
         }
 
-        if (Input.DEBUG_SPAWN_ITEM.held) {
-            if (100 <= this.frameTime - this.debugItemSpawnTime) {
-                if (Math.random() < 0.5) {
-                    this.spawnPowerItem(this.player.location.add(new Vector(0, 200)));
-                } else {
-                    this.spawnPointItem(this.player.location.add(new Vector(0, 200)));
-                }
-                this.debugItemSpawnTime = Date.now();
+        if (Input.DEBUG_SPAWN_ITEM.held && this.doDebug.checkAndTrigger(this.msSinceLastFrame)) {
+            if (Math.random() < 0.5) {
+                this.spawnPowerItem(this.player.location.add(new Vector(0, 200)));
+            } else {
+                this.spawnPointItem(this.player.location.add(new Vector(0, 200)));
             }
         }
     }
-
 
     stepGame() {
         this.debug();
@@ -72,6 +85,15 @@ export class Game {
         }
     }
 
+    drawHUD() {
+        this.ctx.fillStyle = "blue";
+        this.ctx.font = "20px courier";
+        let row = 0;
+        this.ctx.fillText("Score: " + scoreToString(this.score), Game.HUD_LEFT, Game.HUD_TOP + row * Game.HUD_ROW_HEIGHT);
+        row++;
+        this.ctx.fillText("Power: " + powerToString(this.player.powerTier), Game.HUD_LEFT, Game.HUD_TOP + row * Game.HUD_ROW_HEIGHT);
+    }
+
     draw() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
@@ -82,6 +104,7 @@ export class Game {
         this.playerBullets.forEach(b => b.draw(this.ctx));
 
         this.items.forEach(i => i.draw(this.ctx));
+        this.drawHUD();
     }
 
     step() {
@@ -96,5 +119,9 @@ export class Game {
         Input.onFrameEnd();
         this.draw();
         window.requestAnimationFrame(this.step.bind(this));
+    }
+
+    addScore(add: number) {
+        this.score = Math.floor(this.score + add);
     }
 }

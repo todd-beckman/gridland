@@ -1,8 +1,6 @@
-import { Vector } from "./vector";
-import { Actor } from "./actor";
-import { Global } from "./global";
-import { Player } from "./player";
-import { Game } from "./game";
+import { Vector } from "../../util/vector";
+import { Actor } from "actor";
+import { Game } from "../../game";
 
 export abstract class Item implements Actor {
     static readonly RADIUS = 20
@@ -85,7 +83,7 @@ export class PowerItem extends Item {
     }
 
     onCollect(game: Game): void {
-        game.player.collectPowerItem();
+        game.player.collectPowerItem(game);
     }
 }
 

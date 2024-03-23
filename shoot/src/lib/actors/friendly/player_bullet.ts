@@ -1,7 +1,7 @@
-import { Actor } from "./actor";
-import { Global } from "./global";
-import { Vector } from "./vector";
-import { Game } from "./game";
+import { Actor } from "actor";
+import { Global } from "../../util/global";
+import { Vector } from "../../util/vector";
+import { Game } from "../../game";
 import { Player } from "./player";
 
 export class PlayerBullet implements Actor {
