@@ -677,6 +677,7 @@ define("lib/actors/enemies/enemy", ["require", "exports", "lib/actors/actor"], f
         }
     }
     exports.Enemy = Enemy;
+    Enemy.NO_LOOT = () => { return []; };
 });
 define("lib/actors/enemies/basic_mob", ["require", "exports", "lib/actors/enemies/enemy"], function (require, exports, enemy_1) {
     "use strict";
@@ -930,7 +931,74 @@ define("script", ["require", "exports", "lib/game"], function (require, exports,
     Object.defineProperty(exports, "__esModule", { value: true });
     const game = new game_1.Game();
 });
-define("lib/util/scriptable", ["require", "exports"], function (require, exports) {
+define("lib/actors/enemies/enemy_bullet", ["require", "exports", "lib/actors/enemies/enemy"], function (require, exports, enemy_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
+    exports.EnemyBullet = void 0;
+    class EnemyBullet extends enemy_2.Enemy {
+        constructor(path) {
+            super(path, Number.POSITIVE_INFINITY);
+            this.loot = () => { return []; };
+        }
+        takeDamage(_) { }
+        get radius() {
+            return EnemyBullet.RADIUS;
+        }
+        get radiusSquared() {
+            return EnemyBullet.RADIUS_SQUARED;
+        }
+        draw(ctx) {
+            let canvasLocation = this.location.toScreenSpace;
+            ctx.fillStyle = EnemyBullet.COLOR;
+            ctx.fillRect(canvasLocation.x - EnemyBullet.RADIUS / 2, canvasLocation.y - EnemyBullet.RADIUS / 2, EnemyBullet.RADIUS, EnemyBullet.RADIUS);
+        }
+    }
+    exports.EnemyBullet = EnemyBullet;
+    EnemyBullet.RADIUS = 5;
+    EnemyBullet.RADIUS_SQUARED = EnemyBullet.RADIUS * EnemyBullet.RADIUS;
+    EnemyBullet.COLOR = "white";
+});
+define("lib/util/scriptable", ["require", "exports", "lib/actors/enemies/basic_mob", "lib/util/path"], function (require, exports, basic_mob_2, path_2) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.Scriptable = exports.Script = void 0;
+    class Script {
+        constructor(action) {
+            this.action = action;
+        }
+        static SHOOT_PLAYER(speed) {
+            return new Script((game, location) => {
+                let vectorToPlayer = game.player.location.subtract(location);
+                let velocity = vectorToPlayer.toUnit.scale(speed);
+                let path = new path_2.LinearPath(location, velocity);
+                let enemy = new basic_mob_2.BasicMob(path, Number.POSITIVE_INFINITY, () => { return []; });
+                game.spawnEnemy(enemy);
+            });
+        }
+        static SHOOT_RANDOM(speed) {
+            return new Script((game, location) => {
+                let vectorToPlayer = game.player.location.subtract(location);
+                let velocity = vectorToPlayer.toUnit.scale(speed);
+                let path = new path_2.LinearPath(location, velocity);
+                let enemy = new basic_mob_2.BasicMob(path, Number.POSITIVE_INFINITY, () => { return []; });
+                game.spawnEnemy(enemy);
+            });
+        }
+    }
+    exports.Script = Script;
+    class Scriptable {
+        constructor() {
+            this.msSinceSpawn = 0;
+        }
+        act(game, msSinceLastFrame) {
+            let oldMsSinceSpawn = this.msSinceSpawn;
+            this.msSinceSpawn += msSinceLastFrame;
+            this.actionSet.forEach((script, time) => {
+                if (oldMsSinceSpawn < time && this.msSinceSpawn >= time) {
+                    script.action(game, this.location);
+                }
+            });
+        }
+    }
+    exports.Scriptable = Scriptable;
 });

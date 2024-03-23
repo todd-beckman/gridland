@@ -5,6 +5,8 @@ import { Actor } from "../actor";
 import { Item } from "../friendly/item";
 
 export abstract class Enemy extends Actor {
+    static NO_LOOT = () => { return []; };
+
     private readonly path: Path;
     private msTraveledTotal: number = 0
     location: Vector;
