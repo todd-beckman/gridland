@@ -1,4 +1,6 @@
+import { Game } from "../../game";
 import { Path } from "../../util/path";
+import { Script, ScriptAction } from "../../util/scriptable";
 import { Enemy } from "./enemy";
 
 export class EnemyBullet extends Enemy {
@@ -6,13 +8,11 @@ export class EnemyBullet extends Enemy {
     static readonly RADIUS_SQUARED = EnemyBullet.RADIUS * EnemyBullet.RADIUS;
     static readonly COLOR = "white";
 
-    constructor(path: Path) {
-        super(path, Number.POSITIVE_INFINITY);
+    private didGraze = false;
+
+    constructor(script: Script, path: Path) {
+        super(script, path);
     }
-
-    override takeDamage(_: number): void { }
-
-    loot = () => { return [] };
 
     get radius(): number {
         return EnemyBullet.RADIUS;
@@ -20,6 +20,15 @@ export class EnemyBullet extends Enemy {
 
     get radiusSquared(): number {
         return EnemyBullet.RADIUS_SQUARED;
+    }
+
+    get grazed(): boolean {
+        return this.didGraze;
+    }
+
+    graze(game: Game) {
+        this.didGraze = true;
+        game.graze();
     }
 
     draw(ctx: CanvasRenderingContext2D): void {

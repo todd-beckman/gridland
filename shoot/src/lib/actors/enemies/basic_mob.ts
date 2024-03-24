@@ -1,8 +1,9 @@
 import { Path } from "../../util/path";
+import { Script, ScriptAction } from "../../util/scriptable";
 import { Item } from "../friendly/item";
-import { Enemy } from "./enemy";
+import { Mob } from "./enemy";
 
-export class BasicMob extends Enemy {
+export class BasicMob extends Mob {
     static readonly RADIUS = 50;
     static readonly RADIUS_SQUARED = BasicMob.RADIUS * BasicMob.RADIUS;
     static readonly COLOR = "green";
@@ -15,11 +16,8 @@ export class BasicMob extends Enemy {
         return BasicMob.RADIUS_SQUARED;
     }
 
-    readonly loot: () => Item[];
-
-    constructor(path: Path, health: number, loot: () => Item[]) {
-        super(path, health);
-        this.loot = loot;
+    constructor(script: Script, path: Path, health: number, loot: () => Item[]) {
+        super(script, path, health, loot);
     }
 
     draw(ctx: CanvasRenderingContext2D): void {

@@ -5,6 +5,7 @@ import { Input } from "../../util/input";
 import { PlayerBullet } from "./player_bullet";
 import { Game } from "../../game";
 import { WithCooldown } from "../../util/with_cooldown";
+import { NoopScript, Script } from "../../util/scriptable";
 
 export class Player extends Actor {
     static readonly FIRE_RATE = 70;
@@ -15,7 +16,7 @@ export class Player extends Actor {
     static readonly HURTBOX_RADIUS = 4;
     static readonly HURTBOX_RADIUS_SQUARED = Player.HURTBOX_RADIUS * Player.HURTBOX_RADIUS;
 
-    static readonly GRAZEBOX_RADIUS = 8;
+    static readonly GRAZEBOX_RADIUS = 15;
     static readonly GRAZEBOX_RADIUS_SQUARED = Player.GRAZEBOX_RADIUS * Player.GRAZEBOX_RADIUS;
 
     static readonly ITEMBOX_RADIUS = 20
@@ -35,6 +36,10 @@ export class Player extends Actor {
     private fire = new WithCooldown(Player.FIRE_RATE);
 
     location: Vector = new Vector(Player.START_X, Player.START_Y);
+
+    constructor() {
+        super(new NoopScript());
+    }
 
     get radius(): number {
         return Player.HURTBOX_RADIUS;
@@ -56,21 +61,29 @@ export class Player extends Actor {
         }
 
         for (let i = game.items.length - 1; i >= 0; i--) {
-            if (this.collides(game.items[i])) {
+            if (this.collects(game.items[i])) {
                 game.items[i].onCollect(game);
                 game.items.splice(i, 1);
             }
         }
 
-        for (let i = game.enemies.length - 1; i >= 0; i--) {
-            if (this.collides(game.enemies[i])) {
-                let oldPowerLevel = this.powerLevel;
-                this.powerLevel = 0;
-                game.takeDamage(oldPowerLevel);
+        game.mobs.forEach(mob => this.dieIfCollides(game, mob));
+        game.enemyBullets.forEach(bullet => this.dieIfCollides(game, bullet));
+        game.enemyBullets.forEach(bullet => {
+            if (!bullet.grazed && this.grazes(bullet)) {
+                bullet.graze(game);
             }
-        }
+        });
 
         return false;
+    }
+
+    dieIfCollides(game: Game, other: Actor) {
+        if (this.collides(other)) {
+            let oldPowerLevel = this.powerLevel;
+            this.powerLevel = 0;
+            game.takeDamage(oldPowerLevel);
+        }
     }
 
     draw(ctx: CanvasRenderingContext2D) {
@@ -123,6 +136,15 @@ export class Player extends Actor {
         }
         return 3;
     }
+
+    private grazes(other: Actor): boolean {
+        return this.location.distanceSquared(other.location) <= Player.GRAZEBOX_RADIUS_SQUARED + other.radiusSquared;
+    }
+
+    private collects(other: Actor): boolean {
+        return this.location.distanceSquared(other.location) <= Player.ITEMBOX_RADIUS_SQUARED + other.radiusSquared;
+    }
+
 
     private get playerLeftBulletSpawn(): Vector {
         return this.location.add(new Vector(-Player.BULLET_OFFSET_SPAWN, 0));

@@ -29,9 +29,9 @@ export class PlayerBullet extends Actor {
             return true;
         }
 
-        for (let i = 0; i < game.enemies.length; i++) {
-            if (this.collides(game.enemies[i])) {
-                game.enemies[i].takeDamage(1);
+        for (let i = 0; i < game.mobs.length; i++) {
+            if (this.collides(game.mobs[i])) {
+                game.mobs[i].takeDamage(1);
                 return true;
             }
         }

@@ -5,10 +5,12 @@ import { Player } from "./actors/friendly/player";
 import { PlayerBullet } from "./actors/friendly/player_bullet";
 import { Vector } from "./util/vector";
 import { WithCooldown } from "./util/with_cooldown";
-import { Enemy } from "./actors/enemies/enemy";
+import { Enemy, Mob } from "./actors/enemies/enemy";
 import { LinearPath } from "./util/path";
 import { BasicMob } from "./actors/enemies/basic_mob";
 import { FPS } from "./util/fps";
+import { EnemyBullet } from "./actors/enemies/enemy_bullet";
+import { Every, NoopScript, Script, ScriptAction } from "./util/scriptable";
 
 enum MODE {
     PLAY = "PLAY",
@@ -41,12 +43,15 @@ export class Game {
         80000000,
         160000000,
     ];
+    static readonly GRAZE_SCORE = 100;
 
     private frameTime: number = Date.now();
     private readonly canvas: HTMLCanvasElement;
     private readonly ctx: CanvasRenderingContext2D;
     private readonly doDebug = new WithCooldown(100);
     private readonly fps = new FPS();
+    private readonly blinkGameOver = new WithCooldown(750);
+    private showGameOver = true;
 
     msSinceLastFrame: number = 0;
     mode: MODE = MODE.PLAY;
@@ -56,7 +61,8 @@ export class Game {
     player: Player = new Player();
     playerBullets: PlayerBullet[] = [];
     items: Item[] = [];
-    enemies: Enemy[] = [];
+    mobs: Mob[] = [];
+    enemyBullets: EnemyBullet[] = [];
 
     constructor() {
         Input.init();
@@ -86,6 +92,10 @@ export class Game {
         items.forEach(item => this.spawnItem(item, location));
     }
 
+    graze(): void {
+        this.addScore(Game.GRAZE_SCORE);
+    }
+
     addScore(add: number): void {
         let oldScore = this.score;
         this.score = Math.floor(this.score + add);
@@ -99,8 +109,12 @@ export class Game {
         }
     }
 
-    spawnEnemy(enemy: Enemy): void {
-        this.enemies.push(enemy);
+    spawnMob(mob: Mob): void {
+        this.mobs.push(mob);
+    }
+
+    spawnEnemyBullet(bullet: EnemyBullet): void {
+        this.enemyBullets.push(bullet);
     }
 
     takeDamage(powerLevelOnDeath: number) {
@@ -115,6 +129,9 @@ export class Game {
             this.spawnItem(new PowerItem(this.player.location));
         }
         this.player.location = new Vector(Player.START_X, Player.START_Y);
+        this.mobs = [];
+        this.playerBullets = [];
+        this.enemyBullets = [];
     }
 
     // UTILITIES
@@ -154,7 +171,8 @@ export class Game {
                 [Math.floor(Math.random() * 8)].scale(0.05);
 
             let path = new LinearPath(location, velocity);
-            let mob = new BasicMob(path, 10, () => {
+            let script = new Every(500, ScriptAction.SHOOT_PLAYER(0.05));
+            let loot = () => {
                 return [
                     new PointItem(Vector.ZERO),
                     new PointItem(Vector.ZERO),
@@ -162,8 +180,9 @@ export class Game {
                     new PowerItem(Vector.ZERO),
                     new PowerItem(Vector.ZERO),
                 ];
-            });
-            this.spawnEnemy(mob);
+            };
+            let mob = new BasicMob(script, path, 10, loot);
+            this.spawnMob(mob);
         }
     }
 
@@ -183,10 +202,22 @@ export class Game {
             }
         }
 
-        for (let i = this.enemies.length - 1; i >= 0; i--) {
-            if (this.enemies[i].updateOrDelete(this, this.msSinceLastFrame)) {
-                this.enemies.splice(i, 1);
+        for (let i = this.mobs.length - 1; i >= 0; i--) {
+            if (this.mobs[i].updateOrDelete(this, this.msSinceLastFrame)) {
+                this.mobs.splice(i, 1);
             }
+        }
+
+        for (let i = this.enemyBullets.length - 1; i >= 0; i--) {
+            if (this.enemyBullets[i].updateOrDelete(this, this.msSinceLastFrame)) {
+                this.enemyBullets.splice(i, 1);
+            }
+        }
+    }
+
+    private stepGameOver(): void {
+        if (this.blinkGameOver.checkAndTrigger(this.msSinceLastFrame)) {
+            this.showGameOver = !this.showGameOver;
         }
     }
 
@@ -204,6 +235,12 @@ export class Game {
         row++;
         this.ctx.fillStyle = "red";
         this.ctx.fillText("Power:  " + powerToString(this.player.powerTier), Game.HUD_LEFT, Game.HUD_TOP + row * Game.HUD_ROW_HEIGHT);
+
+        row++;
+        if (this.mode === MODE.GAME_OVER && this.showGameOver) {
+            this.ctx.fillStyle = "red";
+            this.ctx.fillText("GAME OVER", Game.HUD_LEFT, Game.HUD_TOP + row * Game.HUD_ROW_HEIGHT);
+        }
     }
 
     private draw(): void {
@@ -216,7 +253,8 @@ export class Game {
         this.player.draw(this.ctx);
         this.playerBullets.forEach(b => b.draw(this.ctx));
         this.items.forEach(i => i.draw(this.ctx));
-        this.enemies.forEach(e => e.draw(this.ctx));
+        this.mobs.forEach(e => e.draw(this.ctx));
+        this.enemyBullets.forEach(eb => eb.draw(this.ctx));
 
         this.drawHUD();
     }
@@ -231,6 +269,8 @@ export class Game {
 
         if (this.mode === MODE.PLAY) {
             this.stepGame();
+        } else if (this.mode === MODE.GAME_OVER) {
+            this.stepGameOver();
         }
 
         Input.onFrameEnd();

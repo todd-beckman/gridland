@@ -172,19 +172,19 @@ class State {
     }
 
     setDirection() {
-        if (Input.held(Input.UP) == 1) {
+        if (Input.held(Input.UP) == 1 && this.direction != Vector.DOWN) {
             this.direction = Vector.UP;
             return;
         }
-        if (Input.held(Input.DOWN) == 1) {
+        if (Input.held(Input.DOWN) == 1 && this.direction != Vector.UP) {
             this.direction = Vector.DOWN;
             return;
         }
-        if (Input.held(Input.LEFT) == 1) {
+        if (Input.held(Input.LEFT) == 1 && this.direction != Vector.RIGHT) {
             this.direction = Vector.LEFT;
             return;
         }
-        if (Input.held(Input.RIGHT) == 1) {
+        if (Input.held(Input.RIGHT) == 1 && this.direction != Vector.LEFT) {
             this.direction = Vector.RIGHT;
             return;
         }
