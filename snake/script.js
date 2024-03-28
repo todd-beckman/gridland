@@ -7,6 +7,26 @@ const SPEED_PER_SECOND = 10;
 const SCORE_TOP = 20;
 const SCORE_LEFT = GRID_SIZE * (BLOCK_SIZE + BLOCK_PADDING) + 20;
 
+class Vector {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+    }
+
+    add(other) {
+        return new Vector(this.x + other.x, this.y + other.y);
+    }
+
+    static UP = new Vector(0, -1);
+    static DOWN = new Vector(0, 1);
+    static LEFT = new Vector(-1, 0);
+    static RIGHT = new Vector(1, 0);
+}
+
+function V(x, y) {
+    return new Vector(x, y);
+}
+
 const Input = {
     LEFT: 0,
     RIGHT: 1,
@@ -70,13 +90,6 @@ const MODE = {
     GAME_OVER: "GAME OVER",
 };
 
-const DIRECTION = {
-    UP: { x: 0, y: -1 },
-    DOWN: { x: 0, y: 1 },
-    LEFT: { x: -1, y: 0 },
-    RIGHT: { x: 1, y: 0 },
-}
-
 const COLOR = {
     EMPTY: "black",
     SNAKE: "white",
@@ -90,7 +103,7 @@ class State {
         let canvas = document.getElementById("canvas");
         this.canvasContext = canvas.getContext("2d");
         this.length = STARTING_LENGTH;
-        this.direction = DIRECTION.DOWN;
+        this.direction = Vector.DOWN;
         this.lastMoveTime = Date.now();
         this.score = 0;
 
@@ -102,32 +115,25 @@ class State {
             }
         }
 
-        this.playerLocation = { x: Math.floor(GRID_SIZE) / 2, y: Math.floor(GRID_SIZE) / 2 };
-        this.setValue(this.playerLocation, this.length);
-        this.apple = {};
+        this.playerLocation = V(Math.floor(GRID_SIZE) / 2, Math.floor(GRID_SIZE) / 2);
+        this.grid[this.playerLocation.x][this.playerLocation.y] = this.length;
+        this.apple = V();
         this.placeApple();
     }
 
     placeApple() {
         do {
-            this.apple = {
-                x: Math.floor(Math.random() * GRID_SIZE),
-                y: Math.floor(Math.random() * GRID_SIZE),
-            };
+            this.apple = V(Math.floor(Math.random() * GRID_SIZE), Math.floor(Math.random() * GRID_SIZE));
         } while (!this.availableLocation(this.apple));
-        this.setValue(this.apple, -1);
+        this.grid[this.apple.x][this.apple.y] = -1;
     }
 
-    setValue(loc, value) {
-        this.grid[loc.x][loc.y] = value;
-    }
-
-    availableLocation(loc) {
-        return loc.x >= 0 &&
-            loc.y >= 0 &&
-            loc.x < GRID_SIZE &&
-            loc.y < GRID_SIZE &&
-            this.grid[loc.x][loc.y] <= 0;
+    availableLocation(v) {
+        return v.x >= 0 &&
+            v.y >= 0 &&
+            v.x < GRID_SIZE &&
+            v.y < GRID_SIZE &&
+            this.grid[v.x][v.y] <= 0;
     }
 
 
@@ -166,20 +172,20 @@ class State {
     }
 
     setDirection() {
-        if (Input.held(Input.UP) == 1) {
-            this.direction = DIRECTION.UP;
+        if (Input.held(Input.UP) == 1 && this.direction != Vector.DOWN) {
+            this.direction = Vector.UP;
             return;
         }
-        if (Input.held(Input.DOWN) == 1) {
-            this.direction = DIRECTION.DOWN;
+        if (Input.held(Input.DOWN) == 1 && this.direction != Vector.UP) {
+            this.direction = Vector.DOWN;
             return;
         }
-        if (Input.held(Input.LEFT) == 1) {
-            this.direction = DIRECTION.LEFT;
+        if (Input.held(Input.LEFT) == 1 && this.direction != Vector.RIGHT) {
+            this.direction = Vector.LEFT;
             return;
         }
-        if (Input.held(Input.RIGHT) == 1) {
-            this.direction = DIRECTION.RIGHT;
+        if (Input.held(Input.RIGHT) == 1 && this.direction != Vector.LEFT) {
+            this.direction = Vector.RIGHT;
             return;
         }
     }
@@ -191,10 +197,9 @@ class State {
         }
         this.lastMoveTime = this.lastFrameTime;
 
-        let nextLocation = {
-            x: this.playerLocation.x + this.direction.x,
-            y: this.playerLocation.y + this.direction.y,
-        };
+        let nextLocation = V(
+            this.playerLocation.x + this.direction.x,
+            this.playerLocation.y + this.direction.y);
         if (!this.availableLocation(nextLocation)) {
             this.mode = MODE.GAME_OVER;
             return;
@@ -207,7 +212,7 @@ class State {
         }
 
         this.playerLocation = nextLocation;
-        this.setValue(this.playerLocation, this.length);
+        this.grid[this.playerLocation.x][this.playerLocation.y] = this.length;
 
         for (let x = 0; x < GRID_SIZE; x++) {
             for (let y = 0; y < GRID_SIZE; y++) {
