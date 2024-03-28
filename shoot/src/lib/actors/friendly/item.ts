@@ -1,6 +1,7 @@
 import { Vector } from "../../util/vector";
 import { Actor } from "actor";
 import { Game } from "../../game";
+import { NoopScript, Script } from "../../util/scriptable";
 
 export abstract class Item extends Actor {
     static readonly RADIUS = 20
@@ -26,7 +27,7 @@ export abstract class Item extends Actor {
     location: Vector;
     velocity: Vector;
     constructor(location: Vector) {
-        super();
+        super(NoopScript.SINGLETON);
         this.location = location;
         let spread = (Math.random() - 0.5) * Item.SPAWN_SPREAD;
         this.velocity = new Vector(spread, Item.SPAWN_VERTICAL_SPEED);

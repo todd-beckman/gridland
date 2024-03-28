@@ -160,29 +160,54 @@ export class Game {
         if (!Global.DEBUG) {
             return;
         }
+        if (this.doDebug.checkAndTrigger(this.msSinceLastFrame)) {
+            if (Input.DEBUG_ACTION_1.held) {
+                let location = this.player.location.addY(200);
+                let velocity =
+                    [
+                        Vector.UP, Vector.UP_LEFT, Vector.RIGHT, Vector.DOWN_RIGHT,
+                        Vector.DOWN, Vector.DOWN_LEFT, Vector.LEFT, Vector.UP_LEFT,
+                    ]
+                    [Math.floor(Math.random() * 8)].scale(0.05);
 
-        if (Input.DEBUG_ACTION.held && this.doDebug.checkAndTrigger(this.msSinceLastFrame)) {
-            let location = this.player.location.addY(200);
-            let velocity =
-                [
-                    Vector.UP, Vector.UP_LEFT, Vector.RIGHT, Vector.DOWN_RIGHT,
-                    Vector.DOWN, Vector.DOWN_LEFT, Vector.LEFT, Vector.UP_LEFT,
-                ]
-                [Math.floor(Math.random() * 8)].scale(0.05);
+                let path = new LinearPath(location, velocity);
+                let script = new Every(1000, ScriptAction.SHOOT_RANDOM(0.1));
+                let loot = () => {
+                    return [
+                        new PointItem(Vector.ZERO),
+                        new PointItem(Vector.ZERO),
+                        new PointItem(Vector.ZERO),
+                        new PowerItem(Vector.ZERO),
+                        new PowerItem(Vector.ZERO),
+                    ];
+                };
+                let mob = new BasicMob(script, path, 10, loot);
+                this.spawnMob(mob);
+            }
 
-            let path = new LinearPath(location, velocity);
-            let script = new Every(1000, ScriptAction.SHOOT_RANDOM(0.1));
-            let loot = () => {
-                return [
-                    new PointItem(Vector.ZERO),
-                    new PointItem(Vector.ZERO),
-                    new PointItem(Vector.ZERO),
-                    new PowerItem(Vector.ZERO),
-                    new PowerItem(Vector.ZERO),
-                ];
-            };
-            let mob = new BasicMob(script, path, 10, loot);
-            this.spawnMob(mob);
+            if (Input.DEBUG_ACTION_2.held) {
+                let location = this.player.location.addY(200);
+                let velocity =
+                    [
+                        Vector.UP, Vector.UP_LEFT, Vector.RIGHT, Vector.DOWN_RIGHT,
+                        Vector.DOWN, Vector.DOWN_LEFT, Vector.LEFT, Vector.UP_LEFT,
+                    ]
+                    [Math.floor(Math.random() * 8)].scale(0.05);
+
+                let path = new LinearPath(location, velocity);
+                let script = new Every(1000, ScriptAction.SHOOT_PLAYER(0.1));
+                let loot = () => {
+                    return [
+                        new PointItem(Vector.ZERO),
+                        new PointItem(Vector.ZERO),
+                        new PointItem(Vector.ZERO),
+                        new PowerItem(Vector.ZERO),
+                        new PowerItem(Vector.ZERO),
+                    ];
+                };
+                let mob = new BasicMob(script, path, 10, loot);
+                this.spawnMob(mob);
+            }
         }
     }
 

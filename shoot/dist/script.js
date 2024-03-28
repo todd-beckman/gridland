@@ -80,7 +80,10 @@ define("lib/util/input", ["require", "exports"], function (require, exports) {
                     Input.inputs.set(Input.SHOOT.id, value);
                     break;
                 case "KeyI":
-                    Input.inputs.set(Input.DEBUG_ACTION.id, value);
+                    Input.inputs.set(Input.DEBUG_ACTION_1.id, value);
+                    break;
+                case "KeyO":
+                    Input.inputs.set(Input.DEBUG_ACTION_2.id, value);
                     break;
                 default:
                     return;
@@ -143,10 +146,8 @@ define("lib/util/input", ["require", "exports"], function (require, exports) {
      * Tracks how many frame the Shoot Left input has been held.
      */
     Input.SHOOT = new Input("SHOOT");
-    /**
-     * Tracks how many frame any Debug input has been held.
-     */
-    Input.DEBUG_ACTION = new Input("DEBUG_ACTION");
+    Input.DEBUG_ACTION_1 = new Input("DEBUG_ACTION_1");
+    Input.DEBUG_ACTION_2 = new Input("DEBUG_ACTION_2");
     ;
 });
 define("lib/util/vector", ["require", "exports", "lib/util/global"], function (require, exports, global_1) {
@@ -442,6 +443,7 @@ define("lib/util/scriptable", ["require", "exports", "lib/actors/enemies/enemy_b
         }
     }
     exports.NoopScript = NoopScript;
+    NoopScript.SINGLETON = new NoopScript();
     class CompositeScript extends Script {
         constructor(scripts) {
             super();
@@ -515,7 +517,7 @@ define("lib/actors/actor", ["require", "exports"], function (require, exports) {
     }
     exports.Actor = Actor;
 });
-define("lib/actors/friendly/item", ["require", "exports", "lib/util/vector", "lib/actors/actor"], function (require, exports, vector_2, actor_2) {
+define("lib/actors/friendly/item", ["require", "exports", "lib/util/vector", "lib/actors/actor", "lib/util/scriptable"], function (require, exports, vector_2, actor_2, scriptable_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.PointItem = exports.PowerItem = exports.Item = void 0;
@@ -527,7 +529,7 @@ define("lib/actors/friendly/item", ["require", "exports", "lib/util/vector", "li
             return Item.RADIUS_SQUARED;
         }
         constructor(location) {
-            super();
+            super(scriptable_1.NoopScript.SINGLETON);
             this.shouldChasePlayer = false;
             this.location = location;
             let spread = (Math.random() - 0.5) * Item.SPAWN_SPREAD;
@@ -676,13 +678,13 @@ define("lib/util/with_cooldown", ["require", "exports"], function (require, expo
     }
     exports.WithCooldown = WithCooldown;
 });
-define("lib/actors/friendly/player", ["require", "exports", "lib/util/vector", "lib/actors/actor", "lib/util/global", "lib/util/input", "lib/actors/friendly/player_bullet", "lib/util/with_cooldown", "lib/util/scriptable"], function (require, exports, vector_3, actor_4, global_2, input_1, player_bullet_1, with_cooldown_1, scriptable_1) {
+define("lib/actors/friendly/player", ["require", "exports", "lib/util/vector", "lib/actors/actor", "lib/util/global", "lib/util/input", "lib/actors/friendly/player_bullet", "lib/util/with_cooldown", "lib/util/scriptable"], function (require, exports, vector_3, actor_4, global_2, input_1, player_bullet_1, with_cooldown_1, scriptable_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.Player = void 0;
     class Player extends actor_4.Actor {
         constructor() {
-            super(new scriptable_1.NoopScript());
+            super(new scriptable_2.NoopScript());
             this.powerLevel = 0;
             this.fire = new with_cooldown_1.WithCooldown(Player.FIRE_RATE);
             this.location = new vector_3.Vector(Player.START_X, Player.START_Y);
@@ -902,7 +904,7 @@ define("lib/util/fps", ["require", "exports", "lib/util/global", "lib/util/with_
     FPS.DRAW_LEFT = global_3.Global.PLAY_AREA_WIDTH + 20;
     FPS.DRAW_TOP = global_3.Global.PLAY_AREA_HEIGHT - 20;
 });
-define("lib/game", ["require", "exports", "lib/util/global", "lib/util/input", "lib/actors/friendly/item", "lib/actors/friendly/player", "lib/util/vector", "lib/util/with_cooldown", "lib/util/path", "lib/actors/enemies/basic_mob", "lib/util/fps", "lib/util/scriptable"], function (require, exports, global_4, input_2, item_1, player_1, vector_4, with_cooldown_3, path_2, basic_mob_1, fps_1, scriptable_2) {
+define("lib/game", ["require", "exports", "lib/util/global", "lib/util/input", "lib/actors/friendly/item", "lib/actors/friendly/player", "lib/util/vector", "lib/util/with_cooldown", "lib/util/path", "lib/actors/enemies/basic_mob", "lib/util/fps", "lib/util/scriptable"], function (require, exports, global_4, input_2, item_1, player_1, vector_4, with_cooldown_3, path_2, basic_mob_1, fps_1, scriptable_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.Game = void 0;
@@ -1020,25 +1022,47 @@ define("lib/game", ["require", "exports", "lib/util/global", "lib/util/input", "
             if (!global_4.Global.DEBUG) {
                 return;
             }
-            if (input_2.Input.DEBUG_ACTION.held && this.doDebug.checkAndTrigger(this.msSinceLastFrame)) {
-                let location = this.player.location.addY(200);
-                let velocity = [
-                    vector_4.Vector.UP, vector_4.Vector.UP_LEFT, vector_4.Vector.RIGHT, vector_4.Vector.DOWN_RIGHT,
-                    vector_4.Vector.DOWN, vector_4.Vector.DOWN_LEFT, vector_4.Vector.LEFT, vector_4.Vector.UP_LEFT,
-                ][Math.floor(Math.random() * 8)].scale(0.05);
-                let path = new path_2.LinearPath(location, velocity);
-                let script = new scriptable_2.Every(1000, scriptable_2.ScriptAction.SHOOT_RANDOM(0.1));
-                let loot = () => {
-                    return [
-                        new item_1.PointItem(vector_4.Vector.ZERO),
-                        new item_1.PointItem(vector_4.Vector.ZERO),
-                        new item_1.PointItem(vector_4.Vector.ZERO),
-                        new item_1.PowerItem(vector_4.Vector.ZERO),
-                        new item_1.PowerItem(vector_4.Vector.ZERO),
-                    ];
-                };
-                let mob = new basic_mob_1.BasicMob(script, path, 10, loot);
-                this.spawnMob(mob);
+            if (this.doDebug.checkAndTrigger(this.msSinceLastFrame)) {
+                if (input_2.Input.DEBUG_ACTION_1.held) {
+                    let location = this.player.location.addY(200);
+                    let velocity = [
+                        vector_4.Vector.UP, vector_4.Vector.UP_LEFT, vector_4.Vector.RIGHT, vector_4.Vector.DOWN_RIGHT,
+                        vector_4.Vector.DOWN, vector_4.Vector.DOWN_LEFT, vector_4.Vector.LEFT, vector_4.Vector.UP_LEFT,
+                    ][Math.floor(Math.random() * 8)].scale(0.05);
+                    let path = new path_2.LinearPath(location, velocity);
+                    let script = new scriptable_3.Every(1000, scriptable_3.ScriptAction.SHOOT_RANDOM(0.1));
+                    let loot = () => {
+                        return [
+                            new item_1.PointItem(vector_4.Vector.ZERO),
+                            new item_1.PointItem(vector_4.Vector.ZERO),
+                            new item_1.PointItem(vector_4.Vector.ZERO),
+                            new item_1.PowerItem(vector_4.Vector.ZERO),
+                            new item_1.PowerItem(vector_4.Vector.ZERO),
+                        ];
+                    };
+                    let mob = new basic_mob_1.BasicMob(script, path, 10, loot);
+                    this.spawnMob(mob);
+                }
+                if (input_2.Input.DEBUG_ACTION_2.held) {
+                    let location = this.player.location.addY(200);
+                    let velocity = [
+                        vector_4.Vector.UP, vector_4.Vector.UP_LEFT, vector_4.Vector.RIGHT, vector_4.Vector.DOWN_RIGHT,
+                        vector_4.Vector.DOWN, vector_4.Vector.DOWN_LEFT, vector_4.Vector.LEFT, vector_4.Vector.UP_LEFT,
+                    ][Math.floor(Math.random() * 8)].scale(0.05);
+                    let path = new path_2.LinearPath(location, velocity);
+                    let script = new scriptable_3.Every(1000, scriptable_3.ScriptAction.SHOOT_PLAYER(0.1));
+                    let loot = () => {
+                        return [
+                            new item_1.PointItem(vector_4.Vector.ZERO),
+                            new item_1.PointItem(vector_4.Vector.ZERO),
+                            new item_1.PointItem(vector_4.Vector.ZERO),
+                            new item_1.PowerItem(vector_4.Vector.ZERO),
+                            new item_1.PowerItem(vector_4.Vector.ZERO),
+                        ];
+                    };
+                    let mob = new basic_mob_1.BasicMob(script, path, 10, loot);
+                    this.spawnMob(mob);
+                }
             }
         }
         stepGame() {

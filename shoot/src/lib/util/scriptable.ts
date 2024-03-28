@@ -41,6 +41,7 @@ export abstract class Script {
 }
 
 export class NoopScript extends Script {
+    static SINGLETON = new NoopScript();
     actionsInRange(_1: number, _2: number): ScriptAction[] {
         return [];
     }

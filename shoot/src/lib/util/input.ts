@@ -48,11 +48,8 @@ export class Input {
      */
     static SHOOT = new Input("SHOOT");
 
-    /**
-     * Tracks how many frame any Debug input has been held.
-     */
-
-    static DEBUG_ACTION = new Input("DEBUG_ACTION");
+    static DEBUG_ACTION_1 = new Input("DEBUG_ACTION_1");
+    static DEBUG_ACTION_2 = new Input("DEBUG_ACTION_2");
 
     private static keyHandler(e: KeyboardEvent) {
         if (e.defaultPrevented || e.repeat) {
@@ -87,7 +84,10 @@ export class Input {
                 Input.inputs.set(Input.SHOOT.id, value);
                 break;
             case "KeyI":
-                Input.inputs.set(Input.DEBUG_ACTION.id, value);
+                Input.inputs.set(Input.DEBUG_ACTION_1.id, value);
+                break;
+            case "KeyO":
+                Input.inputs.set(Input.DEBUG_ACTION_2.id, value);
                 break;
             default:
                 return;
