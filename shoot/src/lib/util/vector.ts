@@ -64,6 +64,14 @@ export class Vector {
         return x * x + y * y;
     }
 
+    rotate(radians: number): Vector {
+        return new Vector(Math.cos(radians), Math.sin(radians));
+    }
+
+    static inDirection(radians: number): Vector {
+        return Vector.RIGHT.rotate(radians);
+    }
+
     get toString(): string {
         return "(" + this.x + "," + this.y + ")";
     }

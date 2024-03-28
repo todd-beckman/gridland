@@ -24,8 +24,7 @@ export class ScriptAction {
 
     static SHOOT_RANDOM(speed: number): ScriptAction {
         return new ScriptAction((game, actor: Actor) => {
-            let angle = Math.random() * 2 * Math.PI;
-            let direction = new Vector(Math.cos(angle), Math.sin(angle));
+            var direction = Vector.inDirection(Math.random() * 2 * Math.PI);
             let velocity = direction.toUnit.scale(speed);
             let path = new LinearPath(actor.location, velocity);
             let enemyBullet = new EnemyBullet(new NoopScript(), path);

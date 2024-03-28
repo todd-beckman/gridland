@@ -171,7 +171,7 @@ export class Game {
                 [Math.floor(Math.random() * 8)].scale(0.05);
 
             let path = new LinearPath(location, velocity);
-            let script = new Every(500, ScriptAction.SHOOT_PLAYER(0.05));
+            let script = new Every(1000, ScriptAction.SHOOT_RANDOM(0.1));
             let loot = () => {
                 return [
                     new PointItem(Vector.ZERO),

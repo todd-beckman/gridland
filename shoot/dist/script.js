@@ -207,6 +207,12 @@ define("lib/util/vector", ["require", "exports", "lib/util/global"], function (r
             let y = this.y - other.y;
             return x * x + y * y;
         }
+        rotate(radians) {
+            return new Vector(Math.cos(radians), Math.sin(radians));
+        }
+        static inDirection(radians) {
+            return Vector.RIGHT.rotate(radians);
+        }
         get toString() {
             return "(" + this.x + "," + this.y + ")";
         }
@@ -415,8 +421,7 @@ define("lib/util/scriptable", ["require", "exports", "lib/actors/enemies/enemy_b
         }
         static SHOOT_RANDOM(speed) {
             return new ScriptAction((game, actor) => {
-                let angle = Math.random() * 2 * Math.PI;
-                let direction = new vector_1.Vector(Math.cos(angle), Math.sin(angle));
+                var direction = vector_1.Vector.inDirection(Math.random() * 2 * Math.PI);
                 let velocity = direction.toUnit.scale(speed);
                 let path = new path_1.LinearPath(actor.location, velocity);
                 let enemyBullet = new enemy_bullet_1.EnemyBullet(new NoopScript(), path);
@@ -1022,7 +1027,7 @@ define("lib/game", ["require", "exports", "lib/util/global", "lib/util/input", "
                     vector_4.Vector.DOWN, vector_4.Vector.DOWN_LEFT, vector_4.Vector.LEFT, vector_4.Vector.UP_LEFT,
                 ][Math.floor(Math.random() * 8)].scale(0.05);
                 let path = new path_2.LinearPath(location, velocity);
-                let script = new scriptable_2.Every(500, scriptable_2.ScriptAction.SHOOT_PLAYER(0.05));
+                let script = new scriptable_2.Every(1000, scriptable_2.ScriptAction.SHOOT_RANDOM(0.1));
                 let loot = () => {
                     return [
                         new item_1.PointItem(vector_4.Vector.ZERO),
