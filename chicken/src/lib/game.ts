@@ -38,6 +38,19 @@ export class Game {
         this.canvas = document.getElementById("canvas") as HTMLCanvasElement;
         this.ctx = this.canvas.getContext("2d") as CanvasRenderingContext2D;
 
+        console.log(window.innerWidth);
+        if (window.innerWidth < Global.SCREEN_WIDTH ||
+            window.innerHeight < Global.PLAY_AREA_HEIGHT) {
+            let scaleWidth = window.innerWidth / Global.SCREEN_WIDTH;
+            let scaleHeight = window.innerHeight / Global.PLAY_AREA_HEIGHT;
+            let scale = Math.min(scaleHeight, scaleWidth);
+
+            this.canvas.width *= scale;
+            this.canvas.height *= scale;
+            console.log("not wide enough. scaling to " + scale);
+            this.ctx.scale(scale, scale);
+        }
+
         this.initalizeState();
         this.mode = MODE.READY;
         window.requestAnimationFrame(this.step.bind(this));

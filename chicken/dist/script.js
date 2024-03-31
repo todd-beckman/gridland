@@ -5,6 +5,7 @@ define("lib/util/global", ["require", "exports"], function (require, exports) {
     exports.Global = Object.freeze({
         PLAY_AREA_WIDTH: 600,
         PLAY_AREA_HEIGHT: 600,
+        SCREEN_WIDTH: 800,
         PLAYER_AREA_BACKGROUND_STYLE: "black",
         HUD_AREA_BACKGROUND_STYLE: "rgb(192,192,192)",
         MAX_FRAMEFRATE: 60 / 1000,
@@ -604,6 +605,17 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
             input_2.Input.init();
             this.canvas = document.getElementById("canvas");
             this.ctx = this.canvas.getContext("2d");
+            console.log(window.innerWidth);
+            if (window.innerWidth < global_6.Global.SCREEN_WIDTH ||
+                window.innerHeight < global_6.Global.PLAY_AREA_HEIGHT) {
+                let scaleWidth = window.innerWidth / global_6.Global.SCREEN_WIDTH;
+                let scaleHeight = window.innerHeight / global_6.Global.PLAY_AREA_HEIGHT;
+                let scale = Math.min(scaleHeight, scaleWidth);
+                this.canvas.width *= scale;
+                this.canvas.height *= scale;
+                console.log("not wide enough. scaling to " + scale);
+                this.ctx.scale(scale, scale);
+            }
             this.initalizeState();
             this.mode = MODE.READY;
             window.requestAnimationFrame(this.step.bind(this));
