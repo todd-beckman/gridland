@@ -5,4 +5,12 @@ export const Global = Object.freeze({
     HUD_AREA_BACKGROUND_STYLE: "rgb(192,192,192)",
 
     GRAVITY_PER_MS: 0.8,
+
+    CHICKEN_SPRITE: function (): HTMLImageElement {
+        return document.getElementById("chicken") as HTMLImageElement;
+    },
+
+    CHICKEN_FLY_SPRITE: function (): HTMLImageElement {
+        return document.getElementById("chicken-fly") as HTMLImageElement;
+    },
 });

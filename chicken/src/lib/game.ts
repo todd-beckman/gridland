@@ -25,28 +25,34 @@ export class Game {
     private showGameOver = false;
     private msSinceLastFrame: number = 0;
     private mode: MODE = MODE.READY;
+    private highScore: number = 0;
 
     player: Player;
-    walls: Wall[] = [];
-    score: number = 0;
+    walls: Wall[];
+    score: number;
 
     constructor() {
         Input.init();
         this.canvas = document.getElementById("canvas") as HTMLCanvasElement;
         this.ctx = this.canvas.getContext("2d") as CanvasRenderingContext2D;
 
+        this.initalizeState();
+        window.requestAnimationFrame(this.step.bind(this));
+    }
+
+    private initalizeState() {
+        this.score = 0;
+        this.walls = [];
         for (let i = 0; i < 3; i++) {
             this.walls.push(new Wall(this, (Global.PLAY_AREA_WIDTH - Wall.RESPAWN_X) / 3 * i));
         }
         this.player = new Player(this);
-
-        window.requestAnimationFrame(this.step.bind(this));
+        this.mode = MODE.PLAY;
     }
 
     private stepReady() {
         if (Input.JUMP.held) {
-            this.player.step(this.msSinceLastFrame);
-            this.mode = MODE.PLAY;
+            this.initalizeState();
         }
     }
 
@@ -63,6 +69,10 @@ export class Game {
         if (this.blinkGameOver.checkAndTrigger) {
             this.showGameOver = !this.showGameOver;
         }
+        if (Input.JUMP.held) {
+            this.initalizeState();
+            this.player.step(this.msSinceLastFrame);
+        }
     }
 
     private draw(): void {
@@ -71,7 +81,7 @@ export class Game {
         Rectangle.PLAY_AREA.draw(this.ctx, Global.PLAYER_AREA_BACKGROUND_STYLE);
 
         this.player.draw(this.ctx);
-        if (this.mode != MODE.READY) {
+        if (this.mode == MODE.PLAY) {
             this.walls.forEach(wall => wall.draw(this.ctx));
         }
 
@@ -84,15 +94,19 @@ export class Game {
 
         this.ctx.font = "20px courier";
         let row = 0;
-
         this.ctx.fillStyle = "blue";
-        this.ctx.fillText("Score:  " + this.score, Game.HUD_LEFT, Game.HUD_TOP + row * Game.HUD_ROW_HEIGHT);
+        this.ctx.fillText("Score:      " + this.score, Game.HUD_LEFT, Game.HUD_TOP + row * Game.HUD_ROW_HEIGHT);
+
+        row++;
+        this.ctx.fillStyle = "red";
+        this.ctx.fillText("High Score: " + this.highScore, Game.HUD_LEFT, Game.HUD_TOP + row * Game.HUD_ROW_HEIGHT);
 
         row++;
         switch (this.mode) {
             case MODE.READY:
+            case MODE.GAME_OVER:
                 this.ctx.fillStyle = "white";
-                this.ctx.fillText("Touch or \nspacebar\nto start.", 50, Global.PLAY_AREA_HEIGHT / 2 - 100);
+                this.ctx.fillText("Touch or spacebar to start.", 50, Global.PLAY_AREA_HEIGHT / 2 - 100);
 
                 break;
             case MODE.GAME_OVER:
@@ -127,6 +141,7 @@ export class Game {
                 this.stepGameOver();
                 break;
         }
+        this.highScore = Math.max(this.score, this.highScore);
 
         Input.onFrameEnd();
         this.draw();

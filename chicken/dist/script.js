@@ -8,6 +8,12 @@ define("lib/util/global", ["require", "exports"], function (require, exports) {
         PLAYER_AREA_BACKGROUND_STYLE: "black",
         HUD_AREA_BACKGROUND_STYLE: "rgb(192,192,192)",
         GRAVITY_PER_MS: 0.8,
+        CHICKEN_SPRITE: function () {
+            return document.getElementById("chicken");
+        },
+        CHICKEN_FLY_SPRITE: function () {
+            return document.getElementById("chicken-fly");
+        },
     });
 });
 define("lib/util/input", ["require", "exports"], function (require, exports) {
@@ -366,11 +372,13 @@ define("lib/actor/player", ["require", "exports", "lib/util/global", "lib/util/i
             this.velocity = vector_2.Vector.ZERO;
             this.loc = new rectangle_1.Rectangle(new vector_2.Vector(Player.START_HORIZONTAL, Player.START_VERTICAL), Player.RADIUS, Player.RADIUS);
             this.game = game;
+            this.loc = Player.START_LOCATION;
         }
         get location() {
             return this.loc;
         }
         step(msSinceLastFrame) {
+            console.log(this.loc.bottom);
             if (this.location.bottom >= global_3.Global.PLAY_AREA_HEIGHT) {
                 this.game.gameOver();
                 return;
@@ -390,12 +398,17 @@ define("lib/actor/player", ["require", "exports", "lib/util/global", "lib/util/i
             }
             this.loc = newLocation;
         }
+        draw(ctx) {
+            let sprite = this.velocity.y < 0 ? global_3.Global.CHICKEN_FLY_SPRITE() : global_3.Global.CHICKEN_SPRITE();
+            ctx.drawImage(sprite, this.location.left, this.location.top);
+        }
     }
     exports.Player = Player;
     Player.COLOR = "red";
     Player.START_HORIZONTAL = global_3.Global.PLAY_AREA_WIDTH / 4;
     Player.START_VERTICAL = global_3.Global.PLAY_AREA_HEIGHT * 2 / 4;
     Player.RADIUS = 45;
+    Player.START_LOCATION = new rectangle_1.Rectangle(new vector_2.Vector(Player.START_HORIZONTAL, Player.START_VERTICAL), Player.RADIUS, Player.RADIUS);
     Player.JUMP_VELOCITY = new vector_2.Vector(0, -11);
 });
 define("lib/actor/wall", ["require", "exports", "lib/util/global", "lib/util/rectangle", "lib/util/vector", "lib/actor/actor"], function (require, exports, global_4, rectangle_2, vector_3, actor_2) {
@@ -502,21 +515,25 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
             this.showGameOver = false;
             this.msSinceLastFrame = 0;
             this.mode = MODE.READY;
-            this.walls = [];
-            this.score = 0;
+            this.highScore = 0;
             input_2.Input.init();
             this.canvas = document.getElementById("canvas");
             this.ctx = this.canvas.getContext("2d");
+            this.initalizeState();
+            window.requestAnimationFrame(this.step.bind(this));
+        }
+        initalizeState() {
+            this.score = 0;
+            this.walls = [];
             for (let i = 0; i < 3; i++) {
                 this.walls.push(new wall_1.Wall(this, (global_6.Global.PLAY_AREA_WIDTH - wall_1.Wall.RESPAWN_X) / 3 * i));
             }
             this.player = new player_1.Player(this);
-            window.requestAnimationFrame(this.step.bind(this));
+            this.mode = MODE.PLAY;
         }
         stepReady() {
             if (input_2.Input.JUMP.held) {
-                this.player.step(this.msSinceLastFrame);
-                this.mode = MODE.PLAY;
+                this.initalizeState();
             }
         }
         stepGame() {
@@ -531,12 +548,16 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
             if (this.blinkGameOver.checkAndTrigger) {
                 this.showGameOver = !this.showGameOver;
             }
+            if (input_2.Input.JUMP.held) {
+                this.initalizeState();
+                this.player.step(this.msSinceLastFrame);
+            }
         }
         draw() {
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
             rectangle_3.Rectangle.PLAY_AREA.draw(this.ctx, global_6.Global.PLAYER_AREA_BACKGROUND_STYLE);
             this.player.draw(this.ctx);
-            if (this.mode != MODE.READY) {
+            if (this.mode == MODE.PLAY) {
                 this.walls.forEach(wall => wall.draw(this.ctx));
             }
             this.drawHUD();
@@ -547,12 +568,16 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
             this.ctx.font = "20px courier";
             let row = 0;
             this.ctx.fillStyle = "blue";
-            this.ctx.fillText("Score:  " + this.score, Game.HUD_LEFT, Game.HUD_TOP + row * Game.HUD_ROW_HEIGHT);
+            this.ctx.fillText("Score:      " + this.score, Game.HUD_LEFT, Game.HUD_TOP + row * Game.HUD_ROW_HEIGHT);
+            row++;
+            this.ctx.fillStyle = "red";
+            this.ctx.fillText("High Score: " + this.highScore, Game.HUD_LEFT, Game.HUD_TOP + row * Game.HUD_ROW_HEIGHT);
             row++;
             switch (this.mode) {
                 case MODE.READY:
+                case MODE.GAME_OVER:
                     this.ctx.fillStyle = "white";
-                    this.ctx.fillText("Touch or \nspacebar\nto start.", 50, global_6.Global.PLAY_AREA_HEIGHT / 2 - 100);
+                    this.ctx.fillText("Touch or spacebar to start.", 50, global_6.Global.PLAY_AREA_HEIGHT / 2 - 100);
                     break;
                 case MODE.GAME_OVER:
                     if (this.showGameOver) {
@@ -583,6 +608,7 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
                     this.stepGameOver();
                     break;
             }
+            this.highScore = Math.max(this.score, this.highScore);
             input_2.Input.onFrameEnd();
             this.draw();
             window.requestAnimationFrame(this.step.bind(this));

@@ -21,6 +21,7 @@ export class Player extends Actor {
     static readonly START_HORIZONTAL = Global.PLAY_AREA_WIDTH / 4;
     static readonly START_VERTICAL = Global.PLAY_AREA_HEIGHT * 2 / 4;
     static readonly RADIUS = 45;
+    static readonly START_LOCATION: Rectangle = new Rectangle(new Vector(Player.START_HORIZONTAL, Player.START_VERTICAL), Player.RADIUS, Player.RADIUS);
     private static readonly JUMP_VELOCITY = new Vector(0, -11);
 
     readonly color = Player.COLOR;
@@ -33,6 +34,7 @@ export class Player extends Actor {
     constructor(game: Game) {
         super();
         this.game = game;
+        this.loc = Player.START_LOCATION;
     }
 
     get location(): Rectangle {
@@ -40,6 +42,8 @@ export class Player extends Actor {
     }
 
     step(msSinceLastFrame: number): void {
+        console.log(this.loc.bottom);
+
         if (this.location.bottom >= Global.PLAY_AREA_HEIGHT) {
             this.game.gameOver();
             return;
@@ -62,5 +66,10 @@ export class Player extends Actor {
         }
 
         this.loc = newLocation;
+    }
+
+    override draw(ctx: CanvasRenderingContext2D): void {
+        let sprite = this.velocity.y < 0 ? Global.CHICKEN_FLY_SPRITE() : Global.CHICKEN_SPRITE();
+        ctx.drawImage(sprite, this.location.left, this.location.top);
     }
 }
