@@ -295,6 +295,17 @@ define("lib/util/rectangle", ["require", "exports", "lib/util/global", "lib/util
     Rectangle.PLAY_AREA = new Rectangle(vector_1.Vector.ZERO, global_2.Global.PLAY_AREA_WIDTH, global_2.Global.PLAY_AREA_HEIGHT);
     Rectangle.HUD_AREA = new Rectangle(new vector_1.Vector(global_2.Global.PLAY_AREA_WIDTH, 0), 800 - global_2.Global.PLAY_AREA_WIDTH, global_2.Global.PLAY_AREA_HEIGHT);
 });
+define("lib/actor/actor", ["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.Actor = void 0;
+    /**
+     * Any game object.
+     */
+    class Actor {
+    }
+    exports.Actor = Actor;
+});
 define("lib/util/with_cooldown", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -328,24 +339,95 @@ define("lib/util/with_cooldown", ["require", "exports"], function (require, expo
     }
     exports.WithCooldown = WithCooldown;
 });
-define("lib/actor/actor", ["require", "exports"], function (require, exports) {
+define("lib/util/particles", ["require", "exports", "lib/actor/actor", "lib/util/rectangle", "lib/util/vector", "lib/util/with_cooldown"], function (require, exports, actor_1, rectangle_1, vector_2, with_cooldown_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    exports.Actor = void 0;
-    /**
-     * Any game object.
-     */
-    class Actor {
-        /**
-         * Shorthand for drawing this actor's location and color.
-         */
+    exports.ParticleSystem = void 0;
+    class Particle extends actor_1.Actor {
+        constructor(color, location, velocity, lifespanMS) {
+            super();
+            this.timeSinceSpawn = 0;
+            this.color = color;
+            this.location = location;
+            this.velocity = velocity;
+            this.lifespanMS = lifespanMS;
+        }
         draw(ctx) {
             this.location.draw(ctx, this.color);
         }
+        step(msSinceLastFrame) {
+            this.timeSinceSpawn += msSinceLastFrame;
+            this.location = this.location.add(this.velocity);
+        }
+        get dead() {
+            return this.timeSinceSpawn >= this.lifespanMS;
+        }
     }
-    exports.Actor = Actor;
+    class ParticleSystem extends actor_1.Actor {
+        constructor(
+        // The fillStyle to render individual particles
+        color, 
+        // How many particles this system will spawn total.
+        numParticles, 
+        // How long this system lives.
+        // This is used to determine how frequently to spawn particles.
+        // A particle system is not considered dead until all particles have been spawned and are considered dead.
+        lifespanMs, 
+        // How long particles live
+        particleLifespanMs, 
+        // The starting location of this system's spawner.
+        location, 
+        // Velocity of this system's spawner.
+        velocity, 
+        // The range of directions in radians.
+        directionRadiansMin, directionRadiansMax, 
+        // Speed of spawned particles
+        particleSpeed) {
+            super();
+            this.particles = [];
+            this.timeSinceSpawn = 0;
+            this.color = color;
+            this.velocity = velocity;
+            this.location = location;
+            this.particleLifespanMs = particleLifespanMs;
+            this.numParticlesToSpawn = numParticles;
+            this.particleSpawnTime = new with_cooldown_1.WithCooldown(lifespanMs / numParticles);
+            this.directionRadiansMin = directionRadiansMin;
+            this.directionRadiansMax = directionRadiansMax;
+            this.particleSpeed = particleSpeed;
+        }
+        draw(ctx) {
+            this.particles.forEach(particle => particle.draw(ctx));
+        }
+        get dead() {
+            return this.numParticlesToSpawn == 0 && this.particles.length == 0;
+        }
+        step(msSinceLastFrame) {
+            this.timeSinceSpawn += msSinceLastFrame;
+            this.location = this.location.add(this.velocity.scale(msSinceLastFrame));
+            for (let i = this.particles.length - 1; i >= 0; i--) {
+                this.particles[i].step(msSinceLastFrame);
+                if (this.particles[i].dead) {
+                    this.particles.splice(i, 1);
+                }
+            }
+            if (this.numParticlesToSpawn > 0) {
+                this.particleSpawnTime.step(msSinceLastFrame);
+                if (this.particleSpawnTime.checkAndTrigger) {
+                    this.numParticlesToSpawn--;
+                    let angle = this.directionRadiansMin + (this.directionRadiansMax - this.directionRadiansMin) * Math.random();
+                    let velocity = vector_2.Vector.RIGHT.rotate(angle).scale(this.particleSpeed);
+                    // console.log("spawning particle with velocity (" + velocity.x + "," + velocity.y + ")");
+                    console.log("spawning particle at location (" + this.location.x + "," + this.location.y + ")");
+                    this.particles.push(new Particle(this.color, new rectangle_1.Rectangle(this.location, ParticleSystem.PARTICLE_SIZE, ParticleSystem.PARTICLE_SIZE), velocity, this.particleLifespanMs));
+                }
+            }
+        }
+    }
+    exports.ParticleSystem = ParticleSystem;
+    ParticleSystem.PARTICLE_SIZE = 5;
 });
-define("lib/actor/player", ["require", "exports", "lib/util/global", "lib/util/input", "lib/util/rectangle", "lib/util/vector", "lib/util/with_cooldown", "lib/actor/actor"], function (require, exports, global_3, input_1, rectangle_1, vector_2, with_cooldown_1, actor_1) {
+define("lib/actor/player", ["require", "exports", "lib/util/global", "lib/util/input", "lib/util/particles", "lib/util/rectangle", "lib/util/vector", "lib/util/with_cooldown", "lib/actor/actor"], function (require, exports, global_3, input_1, particles_1, rectangle_2, vector_3, with_cooldown_2, actor_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.Player = void 0;
@@ -358,13 +440,13 @@ define("lib/actor/player", ["require", "exports", "lib/util/global", "lib/util/i
      * - Determining the end state of the game.
      * - Responding to any user input.
      */
-    class Player extends actor_1.Actor {
+    class Player extends actor_2.Actor {
         constructor(game) {
             super();
             this.color = Player.COLOR;
-            this.jumpSpeed = new with_cooldown_1.WithCooldown(100);
-            this.velocity = vector_2.Vector.ZERO;
-            this.loc = new rectangle_1.Rectangle(new vector_2.Vector(Player.START_HORIZONTAL, Player.START_VERTICAL), Player.RADIUS, Player.RADIUS);
+            this.jumpSpeed = new with_cooldown_2.WithCooldown(100);
+            this.velocity = vector_3.Vector.ZERO;
+            this.loc = new rectangle_2.Rectangle(new vector_3.Vector(Player.START_HORIZONTAL, Player.START_VERTICAL), Player.RADIUS, Player.RADIUS);
             this.game = game;
             this.loc = Player.START_LOCATION;
         }
@@ -372,7 +454,7 @@ define("lib/actor/player", ["require", "exports", "lib/util/global", "lib/util/i
             return this.loc;
         }
         get hurtbox() {
-            return new rectangle_1.Rectangle(this.loc.location.add(new vector_2.Vector(Player.HURTBOX_SHRINK, Player.HURTBOX_SHRINK)), Player.HURTBOX_SIZE, Player.HURTBOX_SIZE);
+            return new rectangle_2.Rectangle(this.loc.location.add(new vector_3.Vector(Player.HURTBOX_SHRINK, Player.HURTBOX_SHRINK)), Player.HURTBOX_SIZE, Player.HURTBOX_SIZE);
         }
         step(msSinceLastFrame) {
             if (this.location.bottom >= global_3.Global.PLAY_AREA_HEIGHT) {
@@ -386,11 +468,12 @@ define("lib/actor/player", ["require", "exports", "lib/util/global", "lib/util/i
             this.jumpSpeed.step(msSinceLastFrame);
             if (input_1.Input.JUMP.held == 1 && this.jumpSpeed.checkAndTrigger) {
                 this.velocity = Player.JUMP_VELOCITY;
+                this.game.spawnParticleSystem(new particles_1.ParticleSystem("red", 20, 250, 300, this.location.location.addX(2), Player.JETPACK_FLAME_SYTEM_VELOCITY, Player.JETPACK_FLAME_ANGLE_MIN, Player.JETPACK_FLAME_ANGLE_MAX, 5));
             }
             this.velocity = this.velocity.addY(global_3.Global.GRAVITY_PER_MS);
             let newLocation = this.loc.add(this.velocity);
             if (newLocation.location.y <= 0) {
-                newLocation = new rectangle_1.Rectangle(new vector_2.Vector(newLocation.location.x, 0), newLocation.width, newLocation.height);
+                newLocation = new rectangle_2.Rectangle(new vector_3.Vector(newLocation.location.x, 0), newLocation.width, newLocation.height);
             }
             this.loc = newLocation;
         }
@@ -404,16 +487,19 @@ define("lib/actor/player", ["require", "exports", "lib/util/global", "lib/util/i
     Player.START_HORIZONTAL = global_3.Global.PLAY_AREA_WIDTH / 4;
     Player.START_VERTICAL = global_3.Global.PLAY_AREA_HEIGHT * 2 / 4;
     Player.RADIUS = 45;
-    Player.START_LOCATION = new rectangle_1.Rectangle(new vector_2.Vector(Player.START_HORIZONTAL, Player.START_VERTICAL), Player.RADIUS, Player.RADIUS);
-    Player.JUMP_VELOCITY = new vector_2.Vector(0, -11);
+    Player.START_LOCATION = new rectangle_2.Rectangle(new vector_3.Vector(Player.START_HORIZONTAL, Player.START_VERTICAL), Player.RADIUS, Player.RADIUS);
+    Player.JUMP_VELOCITY = new vector_3.Vector(0, -11);
     Player.HURTBOX_SHRINK = 2;
     Player.HURTBOX_SIZE = Player.RADIUS - Player.HURTBOX_SHRINK * 2;
+    Player.JETPACK_FLAME_ANGLE_MIN = Math.PI / 2;
+    Player.JETPACK_FLAME_ANGLE_MAX = Math.PI * 3 / 4;
+    Player.JETPACK_FLAME_SYTEM_VELOCITY = new vector_3.Vector(0, -0.1);
 });
-define("lib/actor/wall", ["require", "exports", "lib/util/global", "lib/util/rectangle", "lib/util/vector", "lib/actor/actor"], function (require, exports, global_4, rectangle_2, vector_3, actor_2) {
+define("lib/actor/wall", ["require", "exports", "lib/util/global", "lib/util/rectangle", "lib/util/vector", "lib/actor/actor"], function (require, exports, global_4, rectangle_3, vector_4, actor_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.Wall = void 0;
-    class Wall extends actor_2.Actor {
+    class Wall extends actor_3.Actor {
         get location() {
             return this.lower;
         }
@@ -422,15 +508,15 @@ define("lib/actor/wall", ["require", "exports", "lib/util/global", "lib/util/rec
             this.scoreReady = false;
             this.color = "green";
             this.game = game;
-            this.upper = new rectangle_2.Rectangle(new vector_3.Vector(startingX, 0), Wall.WIDTH, 0);
+            this.upper = new rectangle_3.Rectangle(new vector_4.Vector(startingX, 0), Wall.WIDTH, 0);
             this.lower = this.upper;
         }
         setGap() {
             let gapActual = Wall.GAP_MIN + Math.random() * Wall.GAP_MAX;
             let upperHeight = gapActual;
-            this.upper = new rectangle_2.Rectangle(new vector_3.Vector(Wall.SPAWN_X, 0), Wall.WIDTH, upperHeight);
+            this.upper = new rectangle_3.Rectangle(new vector_4.Vector(Wall.SPAWN_X, 0), Wall.WIDTH, upperHeight);
             let lowerHeight = global_4.Global.PLAY_AREA_HEIGHT - Wall.GAP_SPAN - upperHeight;
-            this.lower = new rectangle_2.Rectangle(new vector_3.Vector(Wall.SPAWN_X, global_4.Global.PLAY_AREA_HEIGHT - lowerHeight), Wall.WIDTH, lowerHeight);
+            this.lower = new rectangle_3.Rectangle(new vector_4.Vector(Wall.SPAWN_X, global_4.Global.PLAY_AREA_HEIGHT - lowerHeight), Wall.WIDTH, lowerHeight);
             this.scoreReady = true;
         }
         collides(other) {
@@ -464,7 +550,7 @@ define("lib/actor/wall", ["require", "exports", "lib/util/global", "lib/util/rec
     Wall.GAP_MIN = Wall.WALL_MIN_HEIGHT;
     Wall.GAP_MAX = global_4.Global.PLAY_AREA_HEIGHT - 2 * Wall.WALL_MIN_HEIGHT - Wall.GAP_SPAN;
 });
-define("lib/util/fps", ["require", "exports", "lib/util/global", "lib/util/with_cooldown"], function (require, exports, global_5, with_cooldown_2) {
+define("lib/util/fps", ["require", "exports", "lib/util/global", "lib/util/with_cooldown"], function (require, exports, global_5, with_cooldown_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.FPS = void 0;
@@ -475,7 +561,7 @@ define("lib/util/fps", ["require", "exports", "lib/util/global", "lib/util/with_
         constructor() {
             this.frameCount = 0;
             this.display = 0;
-            this.everySecond = new with_cooldown_2.WithCooldown(1000);
+            this.everySecond = new with_cooldown_3.WithCooldown(1000);
         }
         update(msSinceLastFrame) {
             this.frameCount += 1;
@@ -495,7 +581,7 @@ define("lib/util/fps", ["require", "exports", "lib/util/global", "lib/util/with_
     FPS.DRAW_LEFT = global_5.Global.PLAY_AREA_WIDTH + 20;
     FPS.DRAW_TOP = global_5.Global.PLAY_AREA_HEIGHT - 20;
 });
-define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", "lib/util/fps", "lib/util/global", "lib/util/input", "lib/util/rectangle", "lib/util/with_cooldown"], function (require, exports, player_1, wall_1, fps_1, global_6, input_2, rectangle_3, with_cooldown_3) {
+define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", "lib/util/fps", "lib/util/global", "lib/util/input", "lib/util/rectangle", "lib/util/with_cooldown"], function (require, exports, player_1, wall_1, fps_1, global_6, input_2, rectangle_4, with_cooldown_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.Game = void 0;
@@ -508,7 +594,7 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
     class Game {
         constructor() {
             this.fps = new fps_1.FPS();
-            this.blinkGameOver = new with_cooldown_3.WithCooldown(750);
+            this.blinkGameOver = new with_cooldown_4.WithCooldown(750);
             this.showGameOver = false;
             this.frameTime = 0;
             this.msSinceLastFrame = 0;
@@ -518,11 +604,16 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
             this.canvas = document.getElementById("canvas");
             this.ctx = this.canvas.getContext("2d");
             this.initalizeState();
+            this.mode = MODE.READY;
             window.requestAnimationFrame(this.step.bind(this));
+        }
+        spawnParticleSystem(particleSystem) {
+            this.particleSystems.push(particleSystem);
         }
         initalizeState() {
             this.score = 0;
             this.walls = [];
+            this.particleSystems = [];
             for (let i = 0; i < 3; i++) {
                 this.walls.push(new wall_1.Wall(this, i * (global_6.Global.PLAY_AREA_WIDTH - wall_1.Wall.RESPAWN_X) / 3));
             }
@@ -532,6 +623,7 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
         stepReady() {
             if (input_2.Input.JUMP.held) {
                 this.initalizeState();
+                this.player.step(this.msSinceLastFrame);
             }
         }
         stepGame() {
@@ -540,6 +632,12 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
             }
             this.player.step(this.msSinceLastFrame);
             this.walls.forEach(wall => wall.step(this.msSinceLastFrame));
+            for (let i = this.particleSystems.length - 1; i >= 0; i--) {
+                this.particleSystems[i].step(this.msSinceLastFrame);
+                if (this.particleSystems[i].dead) {
+                    this.particleSystems.splice(i, 1);
+                }
+            }
         }
         stepGameOver() {
             this.blinkGameOver.step(this.msSinceLastFrame);
@@ -553,16 +651,17 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
         }
         draw() {
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-            rectangle_3.Rectangle.PLAY_AREA.draw(this.ctx, global_6.Global.PLAYER_AREA_BACKGROUND_STYLE);
+            rectangle_4.Rectangle.PLAY_AREA.draw(this.ctx, global_6.Global.PLAYER_AREA_BACKGROUND_STYLE);
             this.player.draw(this.ctx);
             if (this.mode == MODE.PLAY) {
                 this.walls.forEach(wall => wall.draw(this.ctx));
+                this.particleSystems.forEach(particleSystem => particleSystem.draw(this.ctx));
             }
             this.drawHUD();
             this.fps.draw(this.ctx);
         }
         drawHUD() {
-            rectangle_3.Rectangle.HUD_AREA.draw(this.ctx, global_6.Global.HUD_AREA_BACKGROUND_STYLE);
+            rectangle_4.Rectangle.HUD_AREA.draw(this.ctx, global_6.Global.HUD_AREA_BACKGROUND_STYLE);
             this.ctx.font = "20px courier";
             let row = 0;
             this.ctx.fillStyle = "blue";

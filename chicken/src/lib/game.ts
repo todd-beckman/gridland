@@ -3,6 +3,7 @@ import { Wall } from "./actor/wall";
 import { FPS } from "./util/fps";
 import { Global } from "./util/global";
 import { Input } from "./util/input";
+import { ParticleSystem } from "./util/particles";
 import { Rectangle } from "./util/rectangle";
 import { WithCooldown } from "./util/with_cooldown";
 
@@ -29,6 +30,7 @@ export class Game {
 
     player: Player;
     walls: Wall[];
+    particleSystems: ParticleSystem[];
     score: number;
 
     constructor() {
@@ -37,12 +39,18 @@ export class Game {
         this.ctx = this.canvas.getContext("2d") as CanvasRenderingContext2D;
 
         this.initalizeState();
+        this.mode = MODE.READY;
         window.requestAnimationFrame(this.step.bind(this));
+    }
+
+    spawnParticleSystem(particleSystem: ParticleSystem): void {
+        this.particleSystems.push(particleSystem);
     }
 
     private initalizeState() {
         this.score = 0;
         this.walls = [];
+        this.particleSystems = [];
         for (let i = 0; i < 3; i++) {
             this.walls.push(new Wall(this, i * (Global.PLAY_AREA_WIDTH - Wall.RESPAWN_X) / 3));
         }
@@ -53,6 +61,7 @@ export class Game {
     private stepReady() {
         if (Input.JUMP.held) {
             this.initalizeState();
+            this.player.step(this.msSinceLastFrame);
         }
     }
 
@@ -62,6 +71,13 @@ export class Game {
         }
         this.player.step(this.msSinceLastFrame);
         this.walls.forEach(wall => wall.step(this.msSinceLastFrame));
+
+        for (let i = this.particleSystems.length - 1; i >= 0; i--) {
+            this.particleSystems[i].step(this.msSinceLastFrame);
+            if (this.particleSystems[i].dead) {
+                this.particleSystems.splice(i, 1);
+            }
+        }
     }
 
     private stepGameOver(): void {
@@ -83,6 +99,7 @@ export class Game {
         this.player.draw(this.ctx);
         if (this.mode == MODE.PLAY) {
             this.walls.forEach(wall => wall.draw(this.ctx));
+            this.particleSystems.forEach(particleSystem => particleSystem.draw(this.ctx));
         }
 
         this.drawHUD();

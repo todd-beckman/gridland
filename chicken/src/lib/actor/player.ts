@@ -1,6 +1,7 @@
 import { Game } from "../game";
 import { Global } from "../util/global";
 import { Input } from "../util/input";
+import { ParticleSystem } from "../util/particles";
 import { Rectangle } from "../util/rectangle";
 import { Vector } from "../util/vector";
 import { WithCooldown } from "../util/with_cooldown";
@@ -25,6 +26,10 @@ export class Player extends Actor {
     private static readonly JUMP_VELOCITY = new Vector(0, -11);
     private static readonly HURTBOX_SHRINK = 2;
     private static readonly HURTBOX_SIZE = Player.RADIUS - Player.HURTBOX_SHRINK * 2;
+
+    private static readonly JETPACK_FLAME_ANGLE_MIN = Math.PI / 2;
+    private static readonly JETPACK_FLAME_ANGLE_MAX = Math.PI * 3 / 4;
+    private static readonly JETPACK_FLAME_SYTEM_VELOCITY = new Vector(0, -0.1);
 
     readonly color = Player.COLOR;
 
@@ -64,6 +69,17 @@ export class Player extends Actor {
         this.jumpSpeed.step(msSinceLastFrame);
         if (Input.JUMP.held == 1 && this.jumpSpeed.checkAndTrigger) {
             this.velocity = Player.JUMP_VELOCITY;
+
+            this.game.spawnParticleSystem(new ParticleSystem(
+                "red",
+                20,
+                250, 300,
+                this.location.location.addX(2),
+                Player.JETPACK_FLAME_SYTEM_VELOCITY,
+                Player.JETPACK_FLAME_ANGLE_MIN,
+                Player.JETPACK_FLAME_ANGLE_MAX,
+                5,
+            ));
         }
 
         this.velocity = this.velocity.addY(Global.GRAVITY_PER_MS);
