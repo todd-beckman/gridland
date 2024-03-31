@@ -141,9 +141,9 @@ export class Game {
 
     // Public only for access from script.
     // There is probably a better way to do this.
-    step(msSinceLastFrame: DOMHighResTimeStamp): void {
+    step(msSinceLoad: DOMHighResTimeStamp): void {
         let oldFrameTime = this.frameTime;
-        this.frameTime = msSinceLastFrame;
+        this.frameTime = msSinceLoad;
         this.msSinceLastFrame = this.frameTime - oldFrameTime;
         this.fps.update(this.msSinceLastFrame);
 
@@ -162,6 +162,9 @@ export class Game {
 
         Input.onFrameEnd();
         this.draw();
-        window.requestAnimationFrame(this.step.bind(this));
+
+        let frameDuration = window.performance.now() - this.frameTime;
+        let waitForNextFrame = Global.MAX_FRAMEFRATE - frameDuration;
+        window.setTimeout(() => window.requestAnimationFrame(this.step.bind(this)), waitForNextFrame);
     }
 }

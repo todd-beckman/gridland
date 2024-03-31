@@ -7,6 +7,7 @@ define("lib/util/global", ["require", "exports"], function (require, exports) {
         PLAY_AREA_HEIGHT: 600,
         PLAYER_AREA_BACKGROUND_STYLE: "black",
         HUD_AREA_BACKGROUND_STYLE: "rgb(192,192,192)",
+        MAX_FRAMEFRATE: 60 / 1000,
         GRAVITY_PER_MS: 0.8,
         CHICKEN_SPRITE: function () {
             return document.getElementById("chicken");
@@ -689,9 +690,9 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
         }
         // Public only for access from script.
         // There is probably a better way to do this.
-        step(msSinceLastFrame) {
+        step(msSinceLoad) {
             let oldFrameTime = this.frameTime;
-            this.frameTime = msSinceLastFrame;
+            this.frameTime = msSinceLoad;
             this.msSinceLastFrame = this.frameTime - oldFrameTime;
             this.fps.update(this.msSinceLastFrame);
             switch (this.mode) {
@@ -708,7 +709,9 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
             this.highScore = Math.max(this.score, this.highScore);
             input_2.Input.onFrameEnd();
             this.draw();
-            window.requestAnimationFrame(this.step.bind(this));
+            let frameDuration = window.performance.now() - this.frameTime;
+            let waitForNextFrame = global_6.Global.MAX_FRAMEFRATE - frameDuration;
+            window.setTimeout(() => window.requestAnimationFrame(this.step.bind(this)), waitForNextFrame);
         }
     }
     exports.Game = Game;

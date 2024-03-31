@@ -3,6 +3,7 @@ export const Global = Object.freeze({
     PLAY_AREA_HEIGHT: 600,
     PLAYER_AREA_BACKGROUND_STYLE: "black",
     HUD_AREA_BACKGROUND_STYLE: "rgb(192,192,192)",
+    MAX_FRAMEFRATE: 60 / 1000,
 
     GRAVITY_PER_MS: 0.8,
 
