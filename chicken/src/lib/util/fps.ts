@@ -11,10 +11,12 @@ export class FPS {
     private frameCount: number = 0;
     private display: number = 0;
     private everySecond = new WithCooldown(1000);
+    private msSinceLastFrame: number = 0;
 
     update(msSinceLastFrame: number) {
         this.frameCount += 1;
         this.everySecond.step(msSinceLastFrame);
+        this.msSinceLastFrame = msSinceLastFrame;
         if (this.everySecond.checkAndTrigger) {
             this.display = this.frameCount;
             this.frameCount = 0;
@@ -24,6 +26,6 @@ export class FPS {
     draw(ctx: CanvasRenderingContext2D): void {
         ctx.fillStyle = "black";
         ctx.font = "20px courier";
-        ctx.fillText("FPS: " + this.display, FPS.DRAW_LEFT, FPS.DRAW_TOP);
+        ctx.fillText("FPS: " + this.display + " (" + this.msSinceLastFrame + ")", FPS.DRAW_LEFT, FPS.DRAW_TOP);
     }
 }

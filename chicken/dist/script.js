@@ -418,8 +418,6 @@ define("lib/util/particles", ["require", "exports", "lib/actor/actor", "lib/util
                     this.numParticlesToSpawn--;
                     let angle = this.directionRadiansMin + (this.directionRadiansMax - this.directionRadiansMin) * Math.random();
                     let velocity = vector_2.Vector.RIGHT.rotate(angle).scale(this.particleSpeed);
-                    // console.log("spawning particle with velocity (" + velocity.x + "," + velocity.y + ")");
-                    console.log("spawning particle at location (" + this.location.x + "," + this.location.y + ")");
                     this.particles.push(new Particle(this.color, new rectangle_1.Rectangle(this.location, ParticleSystem.PARTICLE_SIZE, ParticleSystem.PARTICLE_SIZE), velocity, this.particleLifespanMs));
                 }
             }
@@ -563,10 +561,12 @@ define("lib/util/fps", ["require", "exports", "lib/util/global", "lib/util/with_
             this.frameCount = 0;
             this.display = 0;
             this.everySecond = new with_cooldown_3.WithCooldown(1000);
+            this.msSinceLastFrame = 0;
         }
         update(msSinceLastFrame) {
             this.frameCount += 1;
             this.everySecond.step(msSinceLastFrame);
+            this.msSinceLastFrame = msSinceLastFrame;
             if (this.everySecond.checkAndTrigger) {
                 this.display = this.frameCount;
                 this.frameCount = 0;
@@ -575,7 +575,7 @@ define("lib/util/fps", ["require", "exports", "lib/util/global", "lib/util/with_
         draw(ctx) {
             ctx.fillStyle = "black";
             ctx.font = "20px courier";
-            ctx.fillText("FPS: " + this.display, FPS.DRAW_LEFT, FPS.DRAW_TOP);
+            ctx.fillText("FPS: " + this.display + " (" + this.msSinceLastFrame + ")", FPS.DRAW_LEFT, FPS.DRAW_TOP);
         }
     }
     exports.FPS = FPS;

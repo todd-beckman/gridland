@@ -109,8 +109,6 @@ export class ParticleSystem extends Actor {
 
                 let angle = this.directionRadiansMin + (this.directionRadiansMax - this.directionRadiansMin) * Math.random();
                 let velocity = Vector.RIGHT.rotate(angle).scale(this.particleSpeed);
-                // console.log("spawning particle with velocity (" + velocity.x + "," + velocity.y + ")");
-                console.log("spawning particle at location (" + this.location.x + "," + this.location.y + ")");
 
                 this.particles.push(new Particle(
                     this.color,
