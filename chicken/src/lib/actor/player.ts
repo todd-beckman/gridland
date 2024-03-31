@@ -23,7 +23,7 @@ export class Player extends Actor {
     private static readonly START_VERTICAL = Global.PLAY_AREA_HEIGHT * 2 / 4;
     private static readonly RADIUS = 45;
     private static readonly START_LOCATION: Rectangle = new Rectangle(new Vector(Player.START_HORIZONTAL, Player.START_VERTICAL), Player.RADIUS, Player.RADIUS);
-    private static readonly JUMP_VELOCITY = new Vector(0, -11);
+    private static readonly JUMP_VELOCITY = new Vector(0, -10);
     private static readonly HURTBOX_SHRINK = 2;
     private static readonly HURTBOX_SIZE = Player.RADIUS - Player.HURTBOX_SHRINK * 2;
 
@@ -82,7 +82,7 @@ export class Player extends Actor {
             ));
         }
 
-        this.velocity = this.velocity.addY(Global.GRAVITY_PER_MS);
+        this.velocity = this.velocity.addY(Global.GRAVITY_PER_MS * msSinceLastFrame);
         let newLocation = this.loc.add(this.velocity);
 
         if (newLocation.location.y <= 0) {

@@ -8,7 +8,7 @@ export class Wall extends Actor {
     static readonly RESPAWN_X: number = -50;
     static readonly WIDTH: number = 50;
     static readonly SPAWN_X: number = Global.PLAY_AREA_WIDTH;
-    static readonly SPEED_PER_MS: number = -50;
+    static readonly SPEED_PER_MS: number = -0.3;
     static readonly WALL_MIN_HEIGHT = 100;
     static readonly GAP_SPAN: number = 200;
     static readonly GAP_MIN: number = Wall.WALL_MIN_HEIGHT;
@@ -56,8 +56,8 @@ export class Wall extends Actor {
     override step(msSinceLastFrame: number): void {
         let oldRight = this.location.right;
 
-        this.upper = this.upper.addX(Wall.SPEED_PER_MS / msSinceLastFrame);
-        this.lower = this.lower.addX(Wall.SPEED_PER_MS / msSinceLastFrame);
+        this.upper = this.upper.addX(Wall.SPEED_PER_MS * msSinceLastFrame);
+        this.lower = this.lower.addX(Wall.SPEED_PER_MS * msSinceLastFrame);
 
         let newRight = this.location.right;
 

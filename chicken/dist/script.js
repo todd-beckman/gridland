@@ -8,7 +8,7 @@ define("lib/util/global", ["require", "exports"], function (require, exports) {
         PLAYER_AREA_BACKGROUND_STYLE: "black",
         HUD_AREA_BACKGROUND_STYLE: "rgb(192,192,192)",
         MAX_FRAMEFRATE: 60 / 1000,
-        GRAVITY_PER_MS: 0.8,
+        GRAVITY_PER_MS: 0.05,
         CHICKEN_SPRITE: function () {
             return document.getElementById("chicken");
         },
@@ -469,7 +469,7 @@ define("lib/actor/player", ["require", "exports", "lib/util/global", "lib/util/i
                 this.velocity = Player.JUMP_VELOCITY;
                 this.game.spawnParticleSystem(new particles_1.ParticleSystem("red", 20, 250, 300, this.location.location.addX(2), Player.JETPACK_FLAME_SYTEM_VELOCITY, Player.JETPACK_FLAME_ANGLE_MIN, Player.JETPACK_FLAME_ANGLE_MAX, 5));
             }
-            this.velocity = this.velocity.addY(global_3.Global.GRAVITY_PER_MS);
+            this.velocity = this.velocity.addY(global_3.Global.GRAVITY_PER_MS * msSinceLastFrame);
             let newLocation = this.loc.add(this.velocity);
             if (newLocation.location.y <= 0) {
                 newLocation = new rectangle_2.Rectangle(new vector_3.Vector(newLocation.location.x, 0), newLocation.width, newLocation.height);
@@ -487,7 +487,7 @@ define("lib/actor/player", ["require", "exports", "lib/util/global", "lib/util/i
     Player.START_VERTICAL = global_3.Global.PLAY_AREA_HEIGHT * 2 / 4;
     Player.RADIUS = 45;
     Player.START_LOCATION = new rectangle_2.Rectangle(new vector_3.Vector(Player.START_HORIZONTAL, Player.START_VERTICAL), Player.RADIUS, Player.RADIUS);
-    Player.JUMP_VELOCITY = new vector_3.Vector(0, -11);
+    Player.JUMP_VELOCITY = new vector_3.Vector(0, -10);
     Player.HURTBOX_SHRINK = 2;
     Player.HURTBOX_SIZE = Player.RADIUS - Player.HURTBOX_SHRINK * 2;
     Player.JETPACK_FLAME_ANGLE_MIN = Math.PI / 2;
@@ -527,8 +527,8 @@ define("lib/actor/wall", ["require", "exports", "lib/util/global", "lib/util/rec
         }
         step(msSinceLastFrame) {
             let oldRight = this.location.right;
-            this.upper = this.upper.addX(Wall.SPEED_PER_MS / msSinceLastFrame);
-            this.lower = this.lower.addX(Wall.SPEED_PER_MS / msSinceLastFrame);
+            this.upper = this.upper.addX(Wall.SPEED_PER_MS * msSinceLastFrame);
+            this.lower = this.lower.addX(Wall.SPEED_PER_MS * msSinceLastFrame);
             let newRight = this.location.right;
             let scoreLine = this.game.player.location.left;
             if (this.scoreReady && oldRight > scoreLine && newRight <= scoreLine) {
@@ -543,7 +543,7 @@ define("lib/actor/wall", ["require", "exports", "lib/util/global", "lib/util/rec
     Wall.RESPAWN_X = -50;
     Wall.WIDTH = 50;
     Wall.SPAWN_X = global_4.Global.PLAY_AREA_WIDTH;
-    Wall.SPEED_PER_MS = -50;
+    Wall.SPEED_PER_MS = -0.3;
     Wall.WALL_MIN_HEIGHT = 100;
     Wall.GAP_SPAN = 200;
     Wall.GAP_MIN = Wall.WALL_MIN_HEIGHT;

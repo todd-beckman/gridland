@@ -5,7 +5,7 @@ export const Global = Object.freeze({
     HUD_AREA_BACKGROUND_STYLE: "rgb(192,192,192)",
     MAX_FRAMEFRATE: 60 / 1000,
 
-    GRAVITY_PER_MS: 0.8,
+    GRAVITY_PER_MS: 0.05,
 
     CHICKEN_SPRITE: function (): HTMLImageElement {
         return document.getElementById("chicken") as HTMLImageElement;
