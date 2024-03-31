@@ -44,8 +44,8 @@ export class Wall extends Actor {
         this.scoreReady = true;
     }
 
-    override collides(other: Actor): boolean {
-        return other.location.collides(this.upper) || other.location.collides(this.lower);
+    collides(other: Rectangle): boolean {
+        return other.collides(this.upper) || other.collides(this.lower);
     }
 
     override draw(ctx: CanvasRenderingContext2D): void {

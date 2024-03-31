@@ -18,11 +18,13 @@ import { Actor } from "./actor";
 export class Player extends Actor {
     static readonly COLOR: string = "red";
 
-    static readonly START_HORIZONTAL = Global.PLAY_AREA_WIDTH / 4;
-    static readonly START_VERTICAL = Global.PLAY_AREA_HEIGHT * 2 / 4;
-    static readonly RADIUS = 45;
-    static readonly START_LOCATION: Rectangle = new Rectangle(new Vector(Player.START_HORIZONTAL, Player.START_VERTICAL), Player.RADIUS, Player.RADIUS);
+    private static readonly START_HORIZONTAL = Global.PLAY_AREA_WIDTH / 4;
+    private static readonly START_VERTICAL = Global.PLAY_AREA_HEIGHT * 2 / 4;
+    private static readonly RADIUS = 45;
+    private static readonly START_LOCATION: Rectangle = new Rectangle(new Vector(Player.START_HORIZONTAL, Player.START_VERTICAL), Player.RADIUS, Player.RADIUS);
     private static readonly JUMP_VELOCITY = new Vector(0, -11);
+    private static readonly HURTBOX_SHRINK = 2;
+    private static readonly HURTBOX_SIZE = Player.RADIUS - Player.HURTBOX_SHRINK * 2;
 
     readonly color = Player.COLOR;
 
@@ -41,12 +43,20 @@ export class Player extends Actor {
         return this.loc;
     }
 
+    get hurtbox(): Rectangle {
+        return new Rectangle(
+            this.loc.location.add(new Vector(Player.HURTBOX_SHRINK, Player.HURTBOX_SHRINK)),
+            Player.HURTBOX_SIZE,
+            Player.HURTBOX_SIZE,
+        );
+    }
+
     step(msSinceLastFrame: number): void {
         if (this.location.bottom >= Global.PLAY_AREA_HEIGHT) {
             this.game.gameOver();
             return;
         }
-        if (this.game.walls.some(wall => wall.collides(this))) {
+        if (this.game.walls.some(wall => wall.collides(this.hurtbox))) {
             this.game.gameOver();
             return;
         }

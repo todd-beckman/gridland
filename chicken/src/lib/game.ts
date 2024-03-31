@@ -18,11 +18,11 @@ export class Game {
     static readonly HUD_ROW_HEIGHT = Global.PLAY_AREA_HEIGHT / 20;
 
     private readonly fps = new FPS();
-    private frameTime: number = Date.now();
     private readonly canvas: HTMLCanvasElement;
     private readonly ctx: CanvasRenderingContext2D;
     private readonly blinkGameOver = new WithCooldown(750);
     private showGameOver = false;
+    private frameTime: number = 0;
     private msSinceLastFrame: number = 0;
     private mode: MODE = MODE.READY;
     private highScore: number = 0;
@@ -44,7 +44,7 @@ export class Game {
         this.score = 0;
         this.walls = [];
         for (let i = 0; i < 3; i++) {
-            this.walls.push(new Wall(this, (Global.PLAY_AREA_WIDTH - Wall.RESPAWN_X) / 3 * i));
+            this.walls.push(new Wall(this, i * (Global.PLAY_AREA_WIDTH - Wall.RESPAWN_X) / 3));
         }
         this.player = new Player(this);
         this.mode = MODE.PLAY;
@@ -124,8 +124,10 @@ export class Game {
 
     // Public only for access from script.
     // There is probably a better way to do this.
-    step(secSinceLastFrame): void {
-        this.msSinceLastFrame = secSinceLastFrame * 1000;
+    step(msSinceLastFrame: DOMHighResTimeStamp): void {
+        let oldFrameTime = this.frameTime;
+        this.frameTime = msSinceLastFrame;
+        this.msSinceLastFrame = this.frameTime - oldFrameTime;
         this.fps.update(this.msSinceLastFrame);
 
         switch (this.mode) {

@@ -337,13 +337,6 @@ define("lib/actor/actor", ["require", "exports"], function (require, exports) {
      */
     class Actor {
         /**
-         * Returns whether this actor collides with the other.
-         * Collision uses rectangle collusion.
-         */
-        collides(other) {
-            return this.location.collides(other.location);
-        }
-        /**
          * Shorthand for drawing this actor's location and color.
          */
         draw(ctx) {
@@ -378,12 +371,15 @@ define("lib/actor/player", ["require", "exports", "lib/util/global", "lib/util/i
         get location() {
             return this.loc;
         }
+        get hurtbox() {
+            return new rectangle_1.Rectangle(this.loc.location.add(new vector_2.Vector(Player.HURTBOX_SHRINK, Player.HURTBOX_SHRINK)), Player.HURTBOX_SIZE, Player.HURTBOX_SIZE);
+        }
         step(msSinceLastFrame) {
             if (this.location.bottom >= global_3.Global.PLAY_AREA_HEIGHT) {
                 this.game.gameOver();
                 return;
             }
-            if (this.game.walls.some(wall => wall.collides(this))) {
+            if (this.game.walls.some(wall => wall.collides(this.hurtbox))) {
                 this.game.gameOver();
                 return;
             }
@@ -410,6 +406,8 @@ define("lib/actor/player", ["require", "exports", "lib/util/global", "lib/util/i
     Player.RADIUS = 45;
     Player.START_LOCATION = new rectangle_1.Rectangle(new vector_2.Vector(Player.START_HORIZONTAL, Player.START_VERTICAL), Player.RADIUS, Player.RADIUS);
     Player.JUMP_VELOCITY = new vector_2.Vector(0, -11);
+    Player.HURTBOX_SHRINK = 2;
+    Player.HURTBOX_SIZE = Player.RADIUS - Player.HURTBOX_SHRINK * 2;
 });
 define("lib/actor/wall", ["require", "exports", "lib/util/global", "lib/util/rectangle", "lib/util/vector", "lib/actor/actor"], function (require, exports, global_4, rectangle_2, vector_3, actor_2) {
     "use strict";
@@ -436,7 +434,7 @@ define("lib/actor/wall", ["require", "exports", "lib/util/global", "lib/util/rec
             this.scoreReady = true;
         }
         collides(other) {
-            return other.location.collides(this.upper) || other.location.collides(this.lower);
+            return other.collides(this.upper) || other.collides(this.lower);
         }
         draw(ctx) {
             this.upper.draw(ctx, "purple");
@@ -510,9 +508,9 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
     class Game {
         constructor() {
             this.fps = new fps_1.FPS();
-            this.frameTime = Date.now();
             this.blinkGameOver = new with_cooldown_3.WithCooldown(750);
             this.showGameOver = false;
+            this.frameTime = 0;
             this.msSinceLastFrame = 0;
             this.mode = MODE.READY;
             this.highScore = 0;
@@ -526,7 +524,7 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
             this.score = 0;
             this.walls = [];
             for (let i = 0; i < 3; i++) {
-                this.walls.push(new wall_1.Wall(this, (global_6.Global.PLAY_AREA_WIDTH - wall_1.Wall.RESPAWN_X) / 3 * i));
+                this.walls.push(new wall_1.Wall(this, i * (global_6.Global.PLAY_AREA_WIDTH - wall_1.Wall.RESPAWN_X) / 3));
             }
             this.player = new player_1.Player(this);
             this.mode = MODE.PLAY;
@@ -592,8 +590,10 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
         }
         // Public only for access from script.
         // There is probably a better way to do this.
-        step(secSinceLastFrame) {
-            this.msSinceLastFrame = secSinceLastFrame * 1000;
+        step(msSinceLastFrame) {
+            let oldFrameTime = this.frameTime;
+            this.frameTime = msSinceLastFrame;
+            this.msSinceLastFrame = this.frameTime - oldFrameTime;
             this.fps.update(this.msSinceLastFrame);
             switch (this.mode) {
                 case MODE.READY:
