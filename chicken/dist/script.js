@@ -60,6 +60,7 @@ define("lib/util/input", ["require", "exports"], function (require, exports) {
             }
             let value = e.type == "touchstart" ? 1 : 0;
             Input.inputs.get(Input.JUMP.id).applyChange(value);
+            e.preventDefault();
         }
         /**
          * Wires up the required listeners.

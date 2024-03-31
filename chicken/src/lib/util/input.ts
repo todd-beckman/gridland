@@ -55,6 +55,7 @@ export class Input {
 
         let value = e.type == "touchstart" ? 1 : 0;
         Input.inputs.get(Input.JUMP.id).applyChange(value);
+        e.preventDefault();
     }
 
     /**
