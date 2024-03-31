@@ -42,8 +42,6 @@ export class Player extends Actor {
     }
 
     step(msSinceLastFrame: number): void {
-        console.log(this.loc.bottom);
-
         if (this.location.bottom >= Global.PLAY_AREA_HEIGHT) {
             this.game.gameOver();
             return;

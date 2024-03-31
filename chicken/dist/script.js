@@ -378,7 +378,6 @@ define("lib/actor/player", ["require", "exports", "lib/util/global", "lib/util/i
             return this.loc;
         }
         step(msSinceLastFrame) {
-            console.log(this.loc.bottom);
             if (this.location.bottom >= global_3.Global.PLAY_AREA_HEIGHT) {
                 this.game.gameOver();
                 return;
