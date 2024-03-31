@@ -124,10 +124,8 @@ export class Game {
 
     // Public only for access from script.
     // There is probably a better way to do this.
-    step(): void {
-        let now = Date.now();
-        this.msSinceLastFrame = now - this.frameTime;
-        this.frameTime = now;
+    step(secSinceLastFrame): void {
+        this.msSinceLastFrame = secSinceLastFrame * 1000;
         this.fps.update(this.msSinceLastFrame);
 
         switch (this.mode) {

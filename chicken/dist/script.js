@@ -592,10 +592,8 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
         }
         // Public only for access from script.
         // There is probably a better way to do this.
-        step() {
-            let now = Date.now();
-            this.msSinceLastFrame = now - this.frameTime;
-            this.frameTime = now;
+        step(secSinceLastFrame) {
+            this.msSinceLastFrame = secSinceLastFrame * 1000;
             this.fps.update(this.msSinceLastFrame);
             switch (this.mode) {
                 case MODE.READY:
