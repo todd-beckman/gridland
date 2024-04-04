@@ -504,7 +504,6 @@ define("lib/actor/wall", ["require", "exports", "lib/util/global", "lib/util/rec
     class Wall extends actor_3.Actor {
         static COLOR(score) {
             let colorIndex = Math.min(Math.floor(score / 10), Wall.colors.length);
-            console.log("colorIndex = " + colorIndex);
             return Wall.colors[colorIndex];
         }
         get color() {
@@ -615,7 +614,6 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
             input_2.Input.init();
             this.canvas = document.getElementById("canvas");
             this.ctx = this.canvas.getContext("2d");
-            console.log(window.innerWidth);
             if (window.innerWidth < global_6.Global.SCREEN_WIDTH ||
                 window.innerHeight < global_6.Global.PLAY_AREA_HEIGHT) {
                 let scaleWidth = window.innerWidth / global_6.Global.SCREEN_WIDTH;
@@ -623,7 +621,6 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
                 let scale = Math.min(scaleHeight, scaleWidth);
                 this.canvas.width *= scale;
                 this.canvas.height *= scale;
-                console.log("not wide enough. scaling to " + scale);
                 this.ctx.scale(scale, scale);
             }
             this.initalizeState();

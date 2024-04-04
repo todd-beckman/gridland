@@ -23,7 +23,6 @@ export class Wall extends Actor {
 
     static COLOR(score: number): string {
         let colorIndex = Math.min(Math.floor(score / 10), Wall.colors.length);
-        console.log("colorIndex = " + colorIndex);
         return Wall.colors[colorIndex];
     }
 
