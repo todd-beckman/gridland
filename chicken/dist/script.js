@@ -425,7 +425,7 @@ define("lib/util/particles", ["require", "exports", "lib/actor/actor", "lib/util
         }
     }
     exports.ParticleSystem = ParticleSystem;
-    ParticleSystem.PARTICLE_SIZE = 5;
+    ParticleSystem.PARTICLE_SIZE = 3;
 });
 define("lib/actor/player", ["require", "exports", "lib/util/global", "lib/util/input", "lib/util/particles", "lib/util/rectangle", "lib/util/vector", "lib/util/with_cooldown", "lib/actor/actor"], function (require, exports, global_3, input_1, particles_1, rectangle_2, vector_3, with_cooldown_2, actor_2) {
     "use strict";
@@ -468,7 +468,9 @@ define("lib/actor/player", ["require", "exports", "lib/util/global", "lib/util/i
             this.jumpSpeed.step(msSinceLastFrame);
             if (input_1.Input.JUMP.held == 1 && this.jumpSpeed.checkAndTrigger) {
                 this.velocity = Player.JUMP_VELOCITY;
-                this.game.spawnParticleSystem(new particles_1.ParticleSystem("red", 20, 250, 300, this.location.location.addX(2), Player.JETPACK_FLAME_SYTEM_VELOCITY, Player.JETPACK_FLAME_ANGLE_MIN, Player.JETPACK_FLAME_ANGLE_MAX, 5));
+                this.game.spawnParticleSystem(new particles_1.ParticleSystem("red", 20, 250, 300, this.location.location.addX(2), Player.JETPACK_FLAME_SYTEM_VELOCITY, Player.JETPACK_FLAME_ANGLE_MIN, Player.JETPACK_FLAME_ANGLE_MAX, 6));
+                this.game.spawnParticleSystem(new particles_1.ParticleSystem("orange", 20, 250, 300, this.location.location.addX(2), Player.JETPACK_FLAME_SYTEM_VELOCITY, Player.JETPACK_FLAME_ANGLE_MIN, Player.JETPACK_FLAME_ANGLE_MAX, 3.5));
+                this.game.spawnParticleSystem(new particles_1.ParticleSystem("yellow", 20, 250, 300, this.location.location.addX(2), Player.JETPACK_FLAME_SYTEM_VELOCITY, Player.JETPACK_FLAME_ANGLE_MIN, Player.JETPACK_FLAME_ANGLE_MAX, 2));
             }
             this.velocity = this.velocity.addY(global_3.Global.GRAVITY_PER_MS * msSinceLastFrame);
             let newLocation = this.loc.add(this.velocity);
@@ -500,13 +502,20 @@ define("lib/actor/wall", ["require", "exports", "lib/util/global", "lib/util/rec
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.Wall = void 0;
     class Wall extends actor_3.Actor {
+        static COLOR(score) {
+            let colorIndex = Math.min(Math.floor(score / 10), Wall.colors.length);
+            console.log("colorIndex = " + colorIndex);
+            return Wall.colors[colorIndex];
+        }
+        get color() {
+            return Wall.COLOR(this.game.score);
+        }
         get location() {
             return this.lower;
         }
         constructor(game, startingX) {
             super();
             this.scoreReady = false;
-            this.color = "green";
             this.game = game;
             this.upper = new rectangle_3.Rectangle(new vector_4.Vector(startingX, 0), Wall.WIDTH, 0);
             this.lower = this.upper;
@@ -523,8 +532,8 @@ define("lib/actor/wall", ["require", "exports", "lib/util/global", "lib/util/rec
             return other.collides(this.upper) || other.collides(this.lower);
         }
         draw(ctx) {
-            this.upper.draw(ctx, "purple");
-            this.lower.draw(ctx, "green");
+            this.upper.draw(ctx, this.color);
+            this.lower.draw(ctx, this.color);
         }
         step(msSinceLastFrame) {
             let oldRight = this.location.right;
@@ -549,6 +558,7 @@ define("lib/actor/wall", ["require", "exports", "lib/util/global", "lib/util/rec
     Wall.GAP_SPAN = 200;
     Wall.GAP_MIN = Wall.WALL_MIN_HEIGHT;
     Wall.GAP_MAX = global_4.Global.PLAY_AREA_HEIGHT - 2 * Wall.WALL_MIN_HEIGHT - Wall.GAP_SPAN;
+    Wall.colors = ["rgb(30, 30, 200)", "green", "rgb(128, 128, 0)", "red", "purple", "pink"];
 });
 define("lib/util/fps", ["require", "exports", "lib/util/global", "lib/util/with_cooldown"], function (require, exports, global_5, with_cooldown_3) {
     "use strict";
@@ -677,10 +687,10 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
             rectangle_4.Rectangle.HUD_AREA.draw(this.ctx, global_6.Global.HUD_AREA_BACKGROUND_STYLE);
             this.ctx.font = "20px courier";
             let row = 0;
-            this.ctx.fillStyle = "blue";
+            this.ctx.fillStyle = wall_1.Wall.COLOR(this.score);
             this.ctx.fillText("Score:      " + this.score, Game.HUD_LEFT, Game.HUD_TOP + row * Game.HUD_ROW_HEIGHT);
             row++;
-            this.ctx.fillStyle = "red";
+            this.ctx.fillStyle = wall_1.Wall.COLOR(this.highScore);
             this.ctx.fillText("High Score: " + this.highScore, Game.HUD_LEFT, Game.HUD_TOP + row * Game.HUD_ROW_HEIGHT);
             row++;
             switch (this.mode) {

@@ -124,11 +124,11 @@ export class Game {
 
         this.ctx.font = "20px courier";
         let row = 0;
-        this.ctx.fillStyle = "blue";
+        this.ctx.fillStyle = Wall.COLOR(this.score);
         this.ctx.fillText("Score:      " + this.score, Game.HUD_LEFT, Game.HUD_TOP + row * Game.HUD_ROW_HEIGHT);
 
         row++;
-        this.ctx.fillStyle = "red";
+        this.ctx.fillStyle = Wall.COLOR(this.highScore);
         this.ctx.fillText("High Score: " + this.highScore, Game.HUD_LEFT, Game.HUD_TOP + row * Game.HUD_ROW_HEIGHT);
 
         row++;

@@ -35,7 +35,7 @@ class Particle extends Actor {
 }
 
 export class ParticleSystem extends Actor {
-    private static readonly PARTICLE_SIZE = 5;
+    private static readonly PARTICLE_SIZE = 3;
 
     readonly color: string;
     private readonly particleLifespanMs: number

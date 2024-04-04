@@ -78,7 +78,29 @@ export class Player extends Actor {
                 Player.JETPACK_FLAME_SYTEM_VELOCITY,
                 Player.JETPACK_FLAME_ANGLE_MIN,
                 Player.JETPACK_FLAME_ANGLE_MAX,
-                5,
+                6,
+            ));
+
+            this.game.spawnParticleSystem(new ParticleSystem(
+                "orange",
+                20,
+                250, 300,
+                this.location.location.addX(2),
+                Player.JETPACK_FLAME_SYTEM_VELOCITY,
+                Player.JETPACK_FLAME_ANGLE_MIN,
+                Player.JETPACK_FLAME_ANGLE_MAX,
+                3.5,
+            ));
+
+            this.game.spawnParticleSystem(new ParticleSystem(
+                "yellow",
+                20,
+                250, 300,
+                this.location.location.addX(2),
+                Player.JETPACK_FLAME_SYTEM_VELOCITY,
+                Player.JETPACK_FLAME_ANGLE_MIN,
+                Player.JETPACK_FLAME_ANGLE_MAX,
+                2,
             ));
         }
 

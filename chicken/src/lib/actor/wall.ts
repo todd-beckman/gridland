@@ -14,12 +14,22 @@ export class Wall extends Actor {
     static readonly GAP_MIN: number = Wall.WALL_MIN_HEIGHT;
     static readonly GAP_MAX: number = Global.PLAY_AREA_HEIGHT - 2 * Wall.WALL_MIN_HEIGHT - Wall.GAP_SPAN;
 
+    static readonly colors: string[] = ["rgb(30, 30, 200)", "green", "rgb(128, 128, 0)", "red", "purple", "pink"];
+
     private upper: Rectangle;
     private lower: Rectangle;
     private readonly game: Game;
     private scoreReady: boolean = false;
 
-    readonly color = "green";
+    static COLOR(score: number): string {
+        let colorIndex = Math.min(Math.floor(score / 10), Wall.colors.length);
+        console.log("colorIndex = " + colorIndex);
+        return Wall.colors[colorIndex];
+    }
+
+    get color() {
+        return Wall.COLOR(this.game.score);
+    }
 
     get location(): Rectangle {
         return this.lower;
@@ -49,8 +59,8 @@ export class Wall extends Actor {
     }
 
     override draw(ctx: CanvasRenderingContext2D): void {
-        this.upper.draw(ctx, "purple");
-        this.lower.draw(ctx, "green");
+        this.upper.draw(ctx, this.color);
+        this.lower.draw(ctx, this.color);
     }
 
     override step(msSinceLastFrame: number): void {
