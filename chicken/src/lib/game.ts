@@ -77,8 +77,9 @@ export class Game {
     }
 
     private stepGame(): void {
-        if (Input.DEBUG_ACTION_1.held) {
-            return;
+        if (Input.DEBUG_ACTION_1.held == 1) {
+            // Testing wall colors
+            // this.score += 10;
         }
         this.player.step(this.msSinceLastFrame);
         this.walls.forEach(wall => wall.step(this.msSinceLastFrame));

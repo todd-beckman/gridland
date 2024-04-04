@@ -14,7 +14,7 @@ export class Wall extends Actor {
     static readonly GAP_MIN: number = Wall.WALL_MIN_HEIGHT;
     static readonly GAP_MAX: number = Global.PLAY_AREA_HEIGHT - 2 * Wall.WALL_MIN_HEIGHT - Wall.GAP_SPAN;
 
-    static readonly colors: string[] = ["rgb(30, 30, 200)", "green", "rgb(128, 128, 0)", "red", "purple", "pink"];
+    static readonly colors: string[] = ["rgb(30, 30, 200)", "green", "rgb(128, 128, 0)", "red", "purple", "rgb(252, 0, 252)"];
 
     private upper: Rectangle;
     private lower: Rectangle;
@@ -22,7 +22,7 @@ export class Wall extends Actor {
     private scoreReady: boolean = false;
 
     static COLOR(score: number): string {
-        let colorIndex = Math.min(Math.floor(score / 10), Wall.colors.length);
+        let colorIndex = Math.min(Math.floor(score / 10), Wall.colors.length - 1);
         return Wall.colors[colorIndex];
     }
 

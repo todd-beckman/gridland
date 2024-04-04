@@ -503,7 +503,7 @@ define("lib/actor/wall", ["require", "exports", "lib/util/global", "lib/util/rec
     exports.Wall = void 0;
     class Wall extends actor_3.Actor {
         static COLOR(score) {
-            let colorIndex = Math.min(Math.floor(score / 10), Wall.colors.length);
+            let colorIndex = Math.min(Math.floor(score / 10), Wall.colors.length - 1);
             return Wall.colors[colorIndex];
         }
         get color() {
@@ -557,7 +557,7 @@ define("lib/actor/wall", ["require", "exports", "lib/util/global", "lib/util/rec
     Wall.GAP_SPAN = 200;
     Wall.GAP_MIN = Wall.WALL_MIN_HEIGHT;
     Wall.GAP_MAX = global_4.Global.PLAY_AREA_HEIGHT - 2 * Wall.WALL_MIN_HEIGHT - Wall.GAP_SPAN;
-    Wall.colors = ["rgb(30, 30, 200)", "green", "rgb(128, 128, 0)", "red", "purple", "pink"];
+    Wall.colors = ["rgb(30, 30, 200)", "green", "rgb(128, 128, 0)", "red", "purple", "rgb(252, 0, 252)"];
 });
 define("lib/util/fps", ["require", "exports", "lib/util/global", "lib/util/with_cooldown"], function (require, exports, global_5, with_cooldown_3) {
     "use strict";
@@ -647,8 +647,9 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
             }
         }
         stepGame() {
-            if (input_2.Input.DEBUG_ACTION_1.held) {
-                return;
+            if (input_2.Input.DEBUG_ACTION_1.held == 1) {
+                // Testing wall colors
+                // this.score += 10;
             }
             this.player.step(this.msSinceLastFrame);
             this.walls.forEach(wall => wall.step(this.msSinceLastFrame));
