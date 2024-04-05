@@ -180,7 +180,7 @@ class State {
 
         this.length = STARTING_LENGTH;
         this.direction = Vector.DOWN;
-        this.lastMoveTime = Date.now();
+        this.lastMoveDirection = this.direction;
         this.score = 0;
 
 
@@ -256,19 +256,19 @@ class State {
     }
 
     setDirection() {
-        if (Input.held(Input.UP) == 1 && this.direction != Vector.DOWN) {
+        if (Input.held(Input.UP) == 1 && this.lastMoveDirection != Vector.DOWN) {
             this.direction = Vector.UP;
             return;
         }
-        if (Input.held(Input.DOWN) == 1 && this.direction != Vector.UP) {
+        if (Input.held(Input.DOWN) == 1 && this.lastMoveDirection != Vector.UP) {
             this.direction = Vector.DOWN;
             return;
         }
-        if (Input.held(Input.LEFT) == 1 && this.direction != Vector.RIGHT) {
+        if (Input.held(Input.LEFT) == 1 && this.lastMoveDirection != Vector.RIGHT) {
             this.direction = Vector.LEFT;
             return;
         }
-        if (Input.held(Input.RIGHT) == 1 && this.direction != Vector.LEFT) {
+        if (Input.held(Input.RIGHT) == 1 && this.lastMoveDirection != Vector.LEFT) {
             this.direction = Vector.RIGHT;
             return;
         }
@@ -285,6 +285,7 @@ class State {
                 this.mode = MODE.GAME_OVER;
                 return;
             }
+            this.lastMoveDirection = this.direction
 
             if (this.grid[nextLocation.x][nextLocation.y] == -1) {
                 this.length += LENGTH_INCREMEMENT_PER_APPLE;
