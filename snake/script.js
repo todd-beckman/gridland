@@ -1,11 +1,16 @@
-const BLOCK_SIZE = 19;
-const BLOCK_PADDING = 0;
+const BLOCK_SIZE = 20;
 const GRID_SIZE = 30;
 const STARTING_LENGTH = 10;
 const LENGTH_INCREMEMENT_PER_APPLE = 2;
 const SPEED_PER_SECOND = 10;
 const SCORE_TOP = 20;
-const SCORE_LEFT = GRID_SIZE * (BLOCK_SIZE + BLOCK_PADDING) + 20;
+const SCORE_LEFT = GRID_SIZE * BLOCK_SIZE + 20;
+
+const Global = Object.freeze({
+    PLAY_AREA_WIDTH: 600,
+    PLAY_AREA_HEIGHT: 600,
+    SCREEN_WIDTH: 800,
+});
 
 class Vector {
     constructor(x, y) {
@@ -67,9 +72,48 @@ const Input = {
         }
     },
 
+    checkDirection() {
+        this.inputs[Input.LEFT] = 0;
+        this.inputs[Input.RIGHT] = 0;
+        this.inputs[Input.UP] = 0;
+        this.inputs[Input.DOWN] = 0;
+
+        let xdiff = touchendX - touchstartX;
+        let ydiff = touchendY - touchstartY;
+
+        // Determine which direction had the higher magnitude to tiebreak horizonal vs vertical
+        let xmag = xdiff < 0 ? -xdiff : xdiff;
+        let ymag = ydiff < 0 ? -ydiff : ydiff;
+
+        if (xmag > ymag) {
+            if (xdiff < 0) {
+                this.inputs[Input.LEFT] = 1;
+            } else {
+                this.inputs[Input.RIGHT] = 1;
+            }
+        } else {
+            if (ydiff < 0) {
+                this.inputs[Input.UP] = 1;
+            } else {
+                this.inputs[Input.DOWN] = 1;
+            }
+        }
+    },
+
     init() {
         window.addEventListener("keyup", this.keyHandler.bind(this), true);
         window.addEventListener("keydown", this.keyHandler.bind(this), true);
+
+        document.addEventListener('touchstart', (e => {
+            touchstartX = e.changedTouches[0].screenX;
+            touchstartY = e.changedTouches[0].screenY;
+        }).bind(this), true)
+
+        document.addEventListener('touchend', (e => {
+            touchendX = e.changedTouches[0].screenX;
+            touchendY = e.changedTouches[0].screenY;
+            this.checkDirection();
+        }).bind(this), true);
     },
 
     held(input) {
@@ -102,10 +146,23 @@ class State {
         this.mode = MODE.PLAY;
         let canvas = document.getElementById("canvas");
         this.canvasContext = canvas.getContext("2d");
+
+        if (window.innerWidth < Global.SCREEN_WIDTH ||
+            window.innerHeight < Global.PLAY_AREA_HEIGHT) {
+            let scaleWidth = window.innerWidth / Global.SCREEN_WIDTH;
+            let scaleHeight = window.innerHeight / Global.PLAY_AREA_HEIGHT;
+            let scale = Math.min(scaleHeight, scaleWidth);
+
+            canvas.width *= scale;
+            canvas.height *= scale;
+            this.canvasContext.scale(scale, scale);
+        }
+
         this.length = STARTING_LENGTH;
         this.direction = Vector.DOWN;
         this.lastMoveTime = Date.now();
         this.score = 0;
+
 
         this.grid = [];
         for (let x = 0; x < GRID_SIZE; x++) {
@@ -142,8 +199,8 @@ class State {
         let color = this.colorAt(x, y);
         this.canvasContext.fillStyle = color;
         this.canvasContext.fillRect(
-            x * (BLOCK_SIZE + BLOCK_PADDING),
-            y * (BLOCK_SIZE + BLOCK_PADDING),
+            x * BLOCK_SIZE,
+            y * BLOCK_SIZE,
             BLOCK_SIZE,
             BLOCK_SIZE,
         );
@@ -158,16 +215,23 @@ class State {
     }
 
     draw() {
-        this.canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+        this.canvasContext.clearRect(0, 0, Global.SCREEN_WIDTH, Global.PLAY_AREA_HEIGHT);
+
+        this.canvasContext.fillStyle = "rgb(80,80,80)"
+        this.canvasContext.fillRect(0, 0, Global.SCREEN_WIDTH, Global.PLAY_AREA_HEIGHT);
+        this.canvasContext.fillStyle = "black";
+        this.canvasContext.fillRect(0, 0, Global.PLAY_AREA_WIDTH, Global.PLAY_AREA_HEIGHT);
 
         for (let x = 0; x < GRID_SIZE; x++) {
             for (let y = 0; y < GRID_SIZE; y++) {
-                this.drawBlock(x, y);
+                if (this.grid[x][y] != 0) {
+                    this.drawBlock(x, y);
+                }
             }
         }
 
-        this.canvasContext.fillStyle = "black";
-        this.canvasContext.font = "16px courier";
+        this.canvasContext.fillStyle = "white";
+        this.canvasContext.font = "18pt courier";
         this.canvasContext.fillText("Score: " + this.score, SCORE_LEFT, SCORE_TOP);
     }
 
