@@ -259,8 +259,8 @@ class State {
         this.canvasContext.fillText("Score: " + this.score, SCORE_LEFT, SCORE_TOP);
 
         if (this.mode === MODE.GAME_OVER) {
-            this.canvasContext.fillText("GAME OVER" + this.score, SCORE_LEFT, SCORE_TOP + 20);
-            this.canvasContext.fillText("Move to play again" + this.score, SCORE_LEFT, SCORE_TOP + 40);
+            this.canvasContext.fillText("GAME OVER", SCORE_LEFT, SCORE_TOP + 20);
+            this.canvasContext.fillText("Move to play again", SCORE_LEFT, SCORE_TOP + 40);
         }
     }
 
