@@ -259,7 +259,7 @@ class State {
         this.canvasContext.font = "14pt courier";
         this.canvasContext.fillText("Score:      " + this.score, SCORE_LEFT, SCORE_TOP + row);
         row += ROW_SIZE;
-        this.canvasContext.fillText("High Score: " + this.score, SCORE_LEFT, SCORE_TOP + row);
+        this.canvasContext.fillText("High Score: " + this.highScore, SCORE_LEFT, SCORE_TOP + row);
 
         row += ROW_SIZE;
         if (this.mode === MODE.GAME_OVER) {
