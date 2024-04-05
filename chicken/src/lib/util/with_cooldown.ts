@@ -27,6 +27,5 @@ export class WithCooldown {
 
     step(msSinceLastFrame: number) {
         this.cooldownMs = Math.max(0, this.cooldownMs - msSinceLastFrame);
-        msSinceLastFrame
     }
 }

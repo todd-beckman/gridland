@@ -2,9 +2,9 @@ const BLOCK_SIZE = 20;
 const GRID_SIZE = 30;
 const STARTING_LENGTH = 10;
 const LENGTH_INCREMEMENT_PER_APPLE = 2;
-const SPEED_PER_SECOND = 10;
 const SCORE_TOP = 20;
 const SCORE_LEFT = GRID_SIZE * BLOCK_SIZE + 20;
+const PLAYER_MOVE_EVERY_MS = 100;
 
 const Global = Object.freeze({
     PLAY_AREA_WIDTH: 600,
@@ -26,6 +26,25 @@ class Vector {
     static DOWN = new Vector(0, 1);
     static LEFT = new Vector(-1, 0);
     static RIGHT = new Vector(1, 0);
+}
+
+class WithCooldown {
+    constructor(cooldownMs) {
+        this.cooldownMs = 0;
+        this.setCooldown = cooldownMs;
+    }
+
+    getAndTrigger() {
+        if (this.cooldowmMs > 0) {
+            return false;
+        }
+        this.cooldowmMs = this.setCooldown;
+        return true;
+    }
+
+    step(msSinceLastFrame) {
+        this.cooldowmMs = Math.max(0, this.cooldowmMs - msSinceLastFrame);
+    }
 }
 
 function V(x, y) {
@@ -146,6 +165,7 @@ class State {
         this.mode = MODE.PLAY;
         let canvas = document.getElementById("canvas");
         this.canvasContext = canvas.getContext("2d");
+        this.playerMovesEvery = new WithCooldown(PLAYER_MOVE_EVERY_MS);
 
         if (window.innerWidth < Global.SCREEN_WIDTH ||
             window.innerHeight < Global.PLAY_AREA_HEIGHT) {
@@ -256,42 +276,40 @@ class State {
 
     stepGame() {
         this.setDirection();
-        if (this.lastFrameTime - this.lastMoveTime < 1000 / SPEED_PER_SECOND) {
-            return;
-        }
-        this.lastMoveTime = this.lastFrameTime;
+        this.playerMovesEvery.step(this.msSinceLastFrame);
+        if (this.playerMovesEvery.getAndTrigger()) {
+            let nextLocation = V(
+                this.playerLocation.x + this.direction.x,
+                this.playerLocation.y + this.direction.y);
+            if (!this.availableLocation(nextLocation)) {
+                this.mode = MODE.GAME_OVER;
+                return;
+            }
 
-        let nextLocation = V(
-            this.playerLocation.x + this.direction.x,
-            this.playerLocation.y + this.direction.y);
-        if (!this.availableLocation(nextLocation)) {
-            this.mode = MODE.GAME_OVER;
-            return;
-        }
+            if (this.grid[nextLocation.x][nextLocation.y] == -1) {
+                this.length += LENGTH_INCREMEMENT_PER_APPLE;
+                this.score++;
+                this.placeApple();
+            }
 
-        if (this.grid[nextLocation.x][nextLocation.y] == -1) {
-            this.length += LENGTH_INCREMEMENT_PER_APPLE;
-            this.score++;
-            this.placeApple();
-        }
+            this.playerLocation = nextLocation;
+            this.grid[this.playerLocation.x][this.playerLocation.y] = this.length;
 
-        this.playerLocation = nextLocation;
-        this.grid[this.playerLocation.x][this.playerLocation.y] = this.length;
-
-        for (let x = 0; x < GRID_SIZE; x++) {
-            for (let y = 0; y < GRID_SIZE; y++) {
-                let value = this.grid[x][y];
-                if (value > 0) {
-                    this.grid[x][y] = value - 1;
+            for (let x = 0; x < GRID_SIZE; x++) {
+                for (let y = 0; y < GRID_SIZE; y++) {
+                    let value = this.grid[x][y];
+                    if (value > 0) {
+                        this.grid[x][y] = value - 1;
+                    }
                 }
             }
         }
     }
 
-    step() {
-        let now = Date.now();
-        this.timeSinceLastFrame = now - this.lastFrameTime;
-        this.lastFrameTime = now;
+    step(msSinceLoad) {
+        let oldFrameTime = this.frameTime;
+        this.frameTime = msSinceLoad;
+        this.msSinceLastFrame = this.frameTime - oldFrameTime;
 
         if (this.mode === MODE.PLAY) {
             this.stepGame();
