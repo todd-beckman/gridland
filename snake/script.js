@@ -3,8 +3,9 @@ const GRID_SIZE = 30;
 const STARTING_LENGTH = 10;
 const LENGTH_INCREMEMENT_PER_APPLE = 2;
 const SCORE_TOP = 20;
-const SCORE_LEFT = GRID_SIZE * BLOCK_SIZE + 20;
+const SCORE_LEFT = GRID_SIZE * BLOCK_SIZE + 10;
 const PLAYER_MOVE_EVERY_MS = 100;
+const ROW_SIZE = 20;
 
 const Global = Object.freeze({
     PLAY_AREA_WIDTH: 600,
@@ -166,6 +167,7 @@ class State {
         let canvas = document.getElementById("canvas");
         this.canvasContext = canvas.getContext("2d");
         this.playerMovesEvery = new WithCooldown(PLAYER_MOVE_EVERY_MS);
+        this.highScore = 0;
 
         if (window.innerWidth < Global.SCREEN_WIDTH ||
             window.innerHeight < Global.PLAY_AREA_HEIGHT) {
@@ -217,8 +219,6 @@ class State {
             this.grid[v.x][v.y] <= 0;
     }
 
-
-
     drawBlock(x, y) {
         let color = this.colorAt(x, y);
         this.canvasContext.fillStyle = color;
@@ -254,13 +254,18 @@ class State {
             }
         }
 
+        let row = 0;
         this.canvasContext.fillStyle = "white";
-        this.canvasContext.font = "18pt courier";
-        this.canvasContext.fillText("Score: " + this.score, SCORE_LEFT, SCORE_TOP);
+        this.canvasContext.font = "14pt courier";
+        this.canvasContext.fillText("Score:      " + this.score, SCORE_LEFT, SCORE_TOP + row);
+        row += ROW_SIZE;
+        this.canvasContext.fillText("High Score: " + this.score, SCORE_LEFT, SCORE_TOP + row);
 
+        row += ROW_SIZE;
         if (this.mode === MODE.GAME_OVER) {
-            this.canvasContext.fillText("GAME OVER", SCORE_LEFT, SCORE_TOP + 20);
-            this.canvasContext.fillText("Move to play again", SCORE_LEFT, SCORE_TOP + 40);
+            this.canvasContext.fillText("GAME OVER", SCORE_LEFT, SCORE_TOP + row);
+            row += ROW_SIZE;
+            this.canvasContext.fillText("Move to restart", SCORE_LEFT, SCORE_TOP + row);
         }
     }
 
@@ -299,6 +304,9 @@ class State {
             if (this.grid[nextLocation.x][nextLocation.y] == -1) {
                 this.length += LENGTH_INCREMEMENT_PER_APPLE;
                 this.score++;
+                if (this.score > this.highScore) {
+                    this.highScore = this.score;
+                }
                 this.placeApple();
             }
 
