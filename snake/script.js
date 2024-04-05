@@ -178,6 +178,10 @@ class State {
             this.canvasContext.scale(scale, scale);
         }
 
+        this.restartGame()
+    }
+
+    restartGame() {
         this.length = STARTING_LENGTH;
         this.direction = Vector.DOWN;
         this.lastMoveDirection = this.direction;
@@ -253,6 +257,11 @@ class State {
         this.canvasContext.fillStyle = "white";
         this.canvasContext.font = "18pt courier";
         this.canvasContext.fillText("Score: " + this.score, SCORE_LEFT, SCORE_TOP);
+
+        if (this.mode === MODE.GAME_OVER) {
+            this.canvasContext.fillText("GAME OVER" + this.score, SCORE_LEFT, SCORE_TOP + 20);
+            this.canvasContext.fillText("Move to play again" + this.score, SCORE_LEFT, SCORE_TOP + 40);
+        }
     }
 
     setDirection() {
@@ -307,6 +316,17 @@ class State {
         }
     }
 
+    stepGameOver() {
+        if (Input.inputs[Input.LEFT] == 1 ||
+            Input.inputs[Input.RIGHT] == 1 ||
+            Input.inputs[Input.UP] == 1 ||
+            Input.inputs[Input.DOWN] == 1) {
+            this.restartGame();
+            this.setDirection();
+            this.mode = MODE.PLAY
+        }
+    }
+
     step(msSinceLoad) {
         let oldFrameTime = this.frameTime;
         this.frameTime = msSinceLoad;
@@ -314,6 +334,8 @@ class State {
 
         if (this.mode === MODE.PLAY) {
             this.stepGame();
+        } else if (this.mode === MODE.GAME_OVER) {
+            this.stepGameOver();
         }
 
         Input.onFrameEnd();
