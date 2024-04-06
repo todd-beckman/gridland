@@ -207,7 +207,7 @@ class State {
     placeApple() {
         do {
             this.apple = V(Math.floor(Math.random() * GRID_SIZE), Math.floor(Math.random() * GRID_SIZE));
-        } while (!this.availableLocation(this.apple));
+        } while (this.grid[this.apple.x][this.apple.y] != 0);
         this.grid[this.apple.x][this.apple.y] = -1;
     }
 
