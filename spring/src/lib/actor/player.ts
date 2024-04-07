@@ -53,6 +53,7 @@ export class Player extends Actor {
 
         if (Input.JUMP.held == 1 && this.canJump) {
             acceleration = acceleration.addY(Player.JUMP_SPEED_PER_MS);
+            this.game.doJump();
         }
         if ((Input.RIGHT.held == 0) == (Input.LEFT.held == 0)) {
             if (this.velocity.x < 0) {

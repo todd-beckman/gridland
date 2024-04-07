@@ -26,6 +26,30 @@ export class Game {
     private canvas: HTMLCanvasElement;
     private canvasContext: CanvasRenderingContext2D;
 
+    private static readonly JUMP_DURATION_MS: number = 300;
+    private static readonly JUMP_SCREEN_BOUNCE: number = 200;
+    private bouncing: boolean = false;
+    private bounceProgressMs: number = 0;
+    private lerpBounceY(msSinceLastFrame: number): number {
+        if (!this.bouncing) {
+            return 0;
+        }
+
+        this.bounceProgressMs += msSinceLastFrame;
+        let percentProgress = this.bounceProgressMs / Game.JUMP_DURATION_MS;
+        if (percentProgress >= 1) {
+            percentProgress = 1;
+            this.bouncing = false;
+            this.bounceProgressMs = 0;
+            return 0;
+        }
+
+        if (percentProgress < 0.5) {
+            return percentProgress * Game.JUMP_SCREEN_BOUNCE;
+        }
+        return -percentProgress * Game.JUMP_SCREEN_BOUNCE + Game.JUMP_SCREEN_BOUNCE;
+    }
+
     player: Player;
     walls: Wall[];
     particleSystems: ParticleSystem[];
@@ -56,8 +80,6 @@ export class Game {
     }
 
     followPlayerCamera(): void {
-        // Add a tracker to tell if we have entered the desired zone since last changing direction
-
         let playerCenter = this.player.region.center
 
         let wantX = playerCenter.x +
@@ -71,30 +93,39 @@ export class Game {
                 Global.BOUND_CAMERA_FOCUS_RIGHT);
 
         let cameraOffset = this.msSinceLastFrame * Global.CAMERA_SPEED_PER_MS;
+        let cameraX = this.camera.x
+
 
         if (this.player.lastFacingLeft) {
-            this.camera = this.camera.addX(-cameraOffset);
-            if (this.camera.x < wantX) {
-                this.camera = new Vector(wantX, this.camera.y);
-            } else if (this.camera.x > boundX) {
-                this.camera = new Vector(boundX, this.camera.y);
+            cameraX -= cameraOffset;
+            if (cameraX < wantX) {
+                cameraX = wantX;
+            } else if (cameraX > boundX) {
+                cameraX -= cameraOffset;
             }
         } else {
-            let newCameraLocation = this.camera.addX(cameraOffset);
-            if (newCameraLocation.x > wantX) {
-                this.camera = new Vector(wantX, this.camera.y);
-            } else if (newCameraLocation.x < boundX) {
-                this.camera = new Vector(boundX, this.camera.y);
-            } else {
-                this.camera = newCameraLocation;
+            cameraX += cameraOffset;
+            if (cameraX > wantX) {
+                cameraX = wantX;
+            } else if (cameraX < boundX) {
+                cameraX += cameraOffset;
             }
         }
+
+        let cameraY = this.lerpBounceY(this.msSinceLastFrame);
+
+        this.camera = new Vector(cameraX, cameraY);
+        console.log("new camera location: " + this.camera.toString);
     }
 
     wallsInXInterval(xmin: number, xmax: number): Wall[] {
         return this.walls.filter(wall => {
             return wall.region.inXInterval(xmin, xmax);
         });
+    }
+
+    doJump(): void {
+        this.bouncing = true;
     }
 
     private initalizeState() {
@@ -114,27 +145,11 @@ export class Game {
     private stepReady() {
         if (Input.JUMP.held) {
             this.initalizeState();
-            this.player.step(this.msSinceLastFrame);
         }
     }
 
     private stepGame(): void {
-        if (Input.DEBUG_ACTION_1.held) {
-            // Testing freezing player
-
-            let left = this.player.region.left;
-            let right = this.player.region.right;
-            let candidateWalls = this.wallsInXInterval(left, right);
-            let collidingWalls = candidateWalls.filter(wall => {
-                return this.player.region.collides(wall.region);
-            });
-
-            console.log("player at (" + left + "," + right +
-                ") has the same interval as " + candidateWalls.length +
-                " and collides with " + collidingWalls.length + ".");
-        } else {
-            this.player.step(this.msSinceLastFrame);
-        }
+        this.player.step(this.msSinceLastFrame);
 
         for (let i = this.particleSystems.length - 1; i >= 0; i--) {
             this.particleSystems[i].step(this.msSinceLastFrame);
@@ -179,6 +194,7 @@ export class Game {
 
     private drawHUD(ctx: CanvasRenderingContext2D): void {
         Rectangle.HUD_AREA.draw(ctx, Vector.ZERO, Global.HUD_AREA_BACKGROUND_STYLE);
+        ctx.font = "12pt courier";
 
         switch (this.mode) {
             case MODE.READY:
@@ -189,8 +205,9 @@ export class Game {
                 break;
             case MODE.GAME_OVER:
                 if (this.showGameOver) {
+                    console.log("showing gameover");
                     ctx.fillStyle = "red";
-                    ctx.fillText("GAME OVER", Global.HUD_LEFT, Global.HUD_TOP + Global.HUD_ROW_HEIGHT);
+                    ctx.fillText("GAME OVER", 20, 20);
                 }
                 break;
         }

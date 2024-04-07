@@ -479,6 +479,7 @@ define("lib/actor/player", ["require", "exports", "lib/util/global", "lib/util/i
             let acceleration = new vector_3.Vector(0, global_3.Global.GRAVITY_PER_MS);
             if (input_1.Input.JUMP.held == 1 && this.canJump) {
                 acceleration = acceleration.addY(_a.JUMP_SPEED_PER_MS);
+                this.game.doJump();
             }
             if ((input_1.Input.RIGHT.held == 0) == (input_1.Input.LEFT.held == 0)) {
                 if (this.velocity.x < 0) {
@@ -597,7 +598,7 @@ define("lib/actor/wall", ["require", "exports", "lib/util/global", "lib/actor/ac
     Wall.WALL_MIN_HEIGHT = 100;
     Wall.COLOR = "brown";
 });
-define("lib/util/fps", ["require", "exports", "lib/util/global", "lib/util/with_cooldown"], function (require, exports, global_5, with_cooldown_2) {
+define("lib/util/fps", ["require", "exports", "lib/util/with_cooldown"], function (require, exports, with_cooldown_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.FPS = void 0;
@@ -609,28 +610,26 @@ define("lib/util/fps", ["require", "exports", "lib/util/global", "lib/util/with_
             this.frameCount = 0;
             this.display = 0;
             this.everySecond = new with_cooldown_2.WithCooldown(1000);
-            this.msSinceLastFrame = 0;
         }
         update(msSinceLastFrame) {
             this.frameCount += 1;
             this.everySecond.step(msSinceLastFrame);
-            this.msSinceLastFrame = msSinceLastFrame;
             if (this.everySecond.checkAndTrigger) {
                 this.display = this.frameCount;
                 this.frameCount = 0;
             }
         }
         draw(ctx) {
-            ctx.fillStyle = "black";
-            ctx.font = "20px courier";
-            ctx.fillText("FPS: " + this.display + " (" + this.msSinceLastFrame + ")", FPS.DRAW_LEFT, FPS.DRAW_TOP);
+            ctx.fillStyle = "gray";
+            ctx.font = "12pt courier";
+            ctx.fillText("FPS: " + this.display, FPS.DRAW_LEFT, FPS.DRAW_TOP);
         }
     }
     exports.FPS = FPS;
-    FPS.DRAW_LEFT = global_5.Global.PLAY_AREA_WIDTH + 20;
-    FPS.DRAW_TOP = global_5.Global.PLAY_AREA_HEIGHT - 20;
+    FPS.DRAW_LEFT = 5;
+    FPS.DRAW_TOP = 15;
 });
-define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", "lib/util/fps", "lib/util/global", "lib/util/input", "lib/util/rectangle", "lib/util/vector", "lib/util/with_cooldown"], function (require, exports, player_1, wall_1, fps_1, global_6, input_2, rectangle_3, vector_4, with_cooldown_3) {
+define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", "lib/util/fps", "lib/util/global", "lib/util/input", "lib/util/rectangle", "lib/util/vector", "lib/util/with_cooldown"], function (require, exports, player_1, wall_1, fps_1, global_5, input_2, rectangle_3, vector_4, with_cooldown_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.Game = void 0;
@@ -641,6 +640,23 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
         MODE["GAME_OVER"] = "GAME OVER";
     })(MODE || (MODE = {}));
     class Game {
+        lerpBounceY(msSinceLastFrame) {
+            if (!this.bouncing) {
+                return 0;
+            }
+            this.bounceProgressMs += msSinceLastFrame;
+            let percentProgress = this.bounceProgressMs / Game.JUMP_DURATION_MS;
+            if (percentProgress >= 1) {
+                percentProgress = 1;
+                this.bouncing = false;
+                this.bounceProgressMs = 0;
+                return 0;
+            }
+            if (percentProgress < 0.5) {
+                return percentProgress * Game.JUMP_SCREEN_BOUNCE;
+            }
+            return -percentProgress * Game.JUMP_SCREEN_BOUNCE + Game.JUMP_SCREEN_BOUNCE;
+        }
         constructor() {
             this.fps = new fps_1.FPS();
             this.blinkGameOver = new with_cooldown_3.WithCooldown(750);
@@ -650,13 +666,15 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
             this.mode = MODE.READY;
             this.highScore = 0;
             this.camera = vector_4.Vector.ZERO;
+            this.bouncing = false;
+            this.bounceProgressMs = 0;
             input_2.Input.init();
             this.canvas = document.getElementById("canvas");
             this.canvasContext = this.canvas.getContext("2d");
-            if (window.innerWidth < global_6.Global.SCREEN_WIDTH ||
-                window.innerHeight < global_6.Global.PLAY_AREA_HEIGHT) {
-                let scaleWidth = window.innerWidth / global_6.Global.SCREEN_WIDTH;
-                let scaleHeight = window.innerHeight / global_6.Global.PLAY_AREA_HEIGHT;
+            if (window.innerWidth < global_5.Global.SCREEN_WIDTH ||
+                window.innerHeight < global_5.Global.PLAY_AREA_HEIGHT) {
+                let scaleWidth = window.innerWidth / global_5.Global.SCREEN_WIDTH;
+                let scaleHeight = window.innerHeight / global_5.Global.PLAY_AREA_HEIGHT;
                 let scale = Math.min(scaleHeight, scaleWidth);
                 this.canvas.width *= scale;
                 this.canvas.height *= scale;
@@ -670,43 +688,46 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
             this.particleSystems.push(particleSystem);
         }
         followPlayerCamera() {
-            // Add a tracker to tell if we have entered the desired zone since last changing direction
             let playerCenter = this.player.region.center;
             let wantX = playerCenter.x +
                 (this.player.lastFacingLeft ?
-                    global_6.Global.GOAL_CAMERA_FOCUS_LEFT :
-                    global_6.Global.GOAL_CAMERA_FOCUS_RIGHT);
+                    global_5.Global.GOAL_CAMERA_FOCUS_LEFT :
+                    global_5.Global.GOAL_CAMERA_FOCUS_RIGHT);
             let boundX = playerCenter.x +
                 (this.player.lastFacingLeft ?
-                    global_6.Global.BOUND_CAMERA_FOCUS_LEFT :
-                    global_6.Global.BOUND_CAMERA_FOCUS_RIGHT);
-            let cameraOffset = this.msSinceLastFrame * global_6.Global.CAMERA_SPEED_PER_MS;
+                    global_5.Global.BOUND_CAMERA_FOCUS_LEFT :
+                    global_5.Global.BOUND_CAMERA_FOCUS_RIGHT);
+            let cameraOffset = this.msSinceLastFrame * global_5.Global.CAMERA_SPEED_PER_MS;
+            let cameraX = this.camera.x;
             if (this.player.lastFacingLeft) {
-                this.camera = this.camera.addX(-cameraOffset);
-                if (this.camera.x < wantX) {
-                    this.camera = new vector_4.Vector(wantX, this.camera.y);
+                cameraX -= cameraOffset;
+                if (cameraX < wantX) {
+                    cameraX = wantX;
                 }
-                else if (this.camera.x > boundX) {
-                    this.camera = new vector_4.Vector(boundX, this.camera.y);
+                else if (cameraX > boundX) {
+                    cameraX -= cameraOffset;
                 }
             }
             else {
-                let newCameraLocation = this.camera.addX(cameraOffset);
-                if (newCameraLocation.x > wantX) {
-                    this.camera = new vector_4.Vector(wantX, this.camera.y);
+                cameraX += cameraOffset;
+                if (cameraX > wantX) {
+                    cameraX = wantX;
                 }
-                else if (newCameraLocation.x < boundX) {
-                    this.camera = new vector_4.Vector(boundX, this.camera.y);
-                }
-                else {
-                    this.camera = newCameraLocation;
+                else if (cameraX < boundX) {
+                    cameraX += cameraOffset;
                 }
             }
+            let cameraY = this.lerpBounceY(this.msSinceLastFrame);
+            this.camera = new vector_4.Vector(cameraX, cameraY);
+            console.log("new camera location: " + this.camera.toString);
         }
         wallsInXInterval(xmin, xmax) {
             return this.walls.filter(wall => {
                 return wall.region.inXInterval(xmin, xmax);
             });
+        }
+        doJump() {
+            this.bouncing = true;
         }
         initalizeState() {
             this.score = 0;
@@ -714,34 +735,19 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
             this.particleSystems = [];
             this.player = new player_1.Player(this);
             this.mode = MODE.PLAY;
-            for (let i = 0; i < global_6.Global.GRID_ROWS; i++) {
+            for (let i = 0; i < global_5.Global.GRID_ROWS; i++) {
                 for (let h = 1; h < 1 + (i / 10); h++) {
-                    this.walls.push(new wall_1.Wall(this, new rectangle_3.Rectangle(wall_1.Wall.WIDTH * i, global_6.Global.ROWTOP(h), wall_1.Wall.WIDTH, wall_1.Wall.WIDTH), "green"));
+                    this.walls.push(new wall_1.Wall(this, new rectangle_3.Rectangle(wall_1.Wall.WIDTH * i, global_5.Global.ROWTOP(h), wall_1.Wall.WIDTH, wall_1.Wall.WIDTH), "green"));
                 }
             }
         }
         stepReady() {
             if (input_2.Input.JUMP.held) {
                 this.initalizeState();
-                this.player.step(this.msSinceLastFrame);
             }
         }
         stepGame() {
-            if (input_2.Input.DEBUG_ACTION_1.held) {
-                // Testing freezing player
-                let left = this.player.region.left;
-                let right = this.player.region.right;
-                let candidateWalls = this.wallsInXInterval(left, right);
-                let collidingWalls = candidateWalls.filter(wall => {
-                    return this.player.region.collides(wall.region);
-                });
-                console.log("player at (" + left + "," + right +
-                    ") has the same interval as " + candidateWalls.length +
-                    " and collides with " + collidingWalls.length + ".");
-            }
-            else {
-                this.player.step(this.msSinceLastFrame);
-            }
+            this.player.step(this.msSinceLastFrame);
             for (let i = this.particleSystems.length - 1; i >= 0; i--) {
                 this.particleSystems[i].step(this.msSinceLastFrame);
                 if (this.particleSystems[i].dead) {
@@ -762,10 +768,10 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
         }
         draw() {
             let buffer = document.createElement("canvas");
-            buffer.width = global_6.Global.PLAY_AREA_WIDTH;
-            buffer.height = global_6.Global.PLAY_AREA_HEIGHT;
+            buffer.width = global_5.Global.PLAY_AREA_WIDTH;
+            buffer.height = global_5.Global.PLAY_AREA_HEIGHT;
             let ctx = buffer.getContext("2d");
-            rectangle_3.Rectangle.PLAY_AREA.draw(ctx, vector_4.Vector.ZERO, global_6.Global.PLAYER_AREA_BACKGROUND_STYLE);
+            rectangle_3.Rectangle.PLAY_AREA.draw(ctx, vector_4.Vector.ZERO, global_5.Global.PLAYER_AREA_BACKGROUND_STYLE);
             this.player.draw(ctx, this.camera);
             if (this.mode == MODE.PLAY) {
                 this.walls.forEach(wall => wall.draw(ctx, this.camera));
@@ -776,17 +782,19 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
             this.canvasContext.drawImage(buffer, 0, 0);
         }
         drawHUD(ctx) {
-            rectangle_3.Rectangle.HUD_AREA.draw(ctx, vector_4.Vector.ZERO, global_6.Global.HUD_AREA_BACKGROUND_STYLE);
+            rectangle_3.Rectangle.HUD_AREA.draw(ctx, vector_4.Vector.ZERO, global_5.Global.HUD_AREA_BACKGROUND_STYLE);
+            ctx.font = "12pt courier";
             switch (this.mode) {
                 case MODE.READY:
                 case MODE.GAME_OVER:
                     ctx.fillStyle = "white";
-                    ctx.fillText("Touch or spacebar to start.", 50, global_6.Global.PLAY_AREA_HEIGHT / 2 - 100);
+                    ctx.fillText("Touch or spacebar to start.", 50, global_5.Global.PLAY_AREA_HEIGHT / 2 - 100);
                     break;
                 case MODE.GAME_OVER:
                     if (this.showGameOver) {
+                        console.log("showing gameover");
                         ctx.fillStyle = "red";
-                        ctx.fillText("GAME OVER", global_6.Global.HUD_LEFT, global_6.Global.HUD_TOP + global_6.Global.HUD_ROW_HEIGHT);
+                        ctx.fillText("GAME OVER", 20, 20);
                     }
                     break;
             }
@@ -816,11 +824,13 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
             input_2.Input.onFrameEnd();
             this.draw();
             let frameDuration = window.performance.now() - this.frameTime;
-            let waitForNextFrame = global_6.Global.MAX_FRAMEFRATE - frameDuration;
+            let waitForNextFrame = global_5.Global.MAX_FRAMEFRATE - frameDuration;
             window.setTimeout(() => window.requestAnimationFrame(this.step.bind(this)), waitForNextFrame);
         }
     }
     exports.Game = Game;
+    Game.JUMP_DURATION_MS = 300;
+    Game.JUMP_SCREEN_BOUNCE = 200;
 });
 define("script", ["require", "exports", "lib/game"], function (require, exports, game_1) {
     "use strict";
