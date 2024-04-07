@@ -27,7 +27,7 @@ export class Game {
     private canvasContext: CanvasRenderingContext2D;
 
     private static readonly JUMP_DURATION_MS: number = 300;
-    private static readonly JUMP_SCREEN_BOUNCE: number = 200;
+    private static readonly JUMP_SCREEN_BOUNCE: number = 100;
     private bouncing: boolean = false;
     private bounceProgressMs: number = 0;
     private lerpBounceY(msSinceLastFrame: number): number {
@@ -44,10 +44,14 @@ export class Game {
             return 0;
         }
 
-        if (percentProgress < 0.5) {
-            return percentProgress * Game.JUMP_SCREEN_BOUNCE;
+        let firstBounce = 0.7;
+        if (percentProgress < firstBounce) {
+            let magnitude = Math.sin(percentProgress / firstBounce * Math.PI);
+            return (Game.JUMP_SCREEN_BOUNCE * magnitude);
         }
-        return -percentProgress * Game.JUMP_SCREEN_BOUNCE + Game.JUMP_SCREEN_BOUNCE;
+
+        let magnitude = Math.sin(percentProgress / (1 - firstBounce) * Math.PI);
+        return (Game.JUMP_SCREEN_BOUNCE / 5 * magnitude);
     }
 
     player: Player;

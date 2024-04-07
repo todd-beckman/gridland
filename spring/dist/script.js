@@ -652,10 +652,13 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
                 this.bounceProgressMs = 0;
                 return 0;
             }
-            if (percentProgress < 0.5) {
-                return percentProgress * Game.JUMP_SCREEN_BOUNCE;
+            let firstBounce = 0.7;
+            if (percentProgress < firstBounce) {
+                let magnitude = Math.sin(percentProgress / firstBounce * Math.PI);
+                return (Game.JUMP_SCREEN_BOUNCE * magnitude);
             }
-            return -percentProgress * Game.JUMP_SCREEN_BOUNCE + Game.JUMP_SCREEN_BOUNCE;
+            let magnitude = Math.sin(percentProgress / (1 - firstBounce) * Math.PI);
+            return (Game.JUMP_SCREEN_BOUNCE / 5 * magnitude);
         }
         constructor() {
             this.fps = new fps_1.FPS();
@@ -830,7 +833,7 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
     }
     exports.Game = Game;
     Game.JUMP_DURATION_MS = 300;
-    Game.JUMP_SCREEN_BOUNCE = 200;
+    Game.JUMP_SCREEN_BOUNCE = 100;
 });
 define("script", ["require", "exports", "lib/game"], function (require, exports, game_1) {
     "use strict";
