@@ -624,26 +624,35 @@ define("lib/actor/wall", ["require", "exports", "lib/util/global", "lib/actor/ac
     Wall.WALL_MIN_HEIGHT = 100;
     Wall.COLOR = "brown";
 });
-define("lib/level/level", ["require", "exports"], function (require, exports) {
+define("lib/level/level", ["require", "exports", "lib/actor/wall", "lib/util/global", "lib/util/rectangle"], function (require, exports, wall_1, global_5, rectangle_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.Level = void 0;
     class Level {
-        get next() { return null; }
+        get nextLevel() { return null; }
+        load(game) {
+            this.walls.forEach((wallList, rowNum) => {
+                for (let wall of wallList) {
+                    game.walls.push(new wall_1.Wall(game, new rectangle_3.Rectangle(wall_1.Wall.WIDTH * wall, global_5.Global.ROWTOP(rowNum + 1), wall_1.Wall.WIDTH, wall_1.Wall.WIDTH), "green"));
+                }
+            });
+        }
     }
     exports.Level = Level;
 });
-define("lib/level/level0", ["require", "exports", "lib/actor/wall", "lib/util/global", "lib/util/rectangle", "lib/level/level"], function (require, exports, wall_1, global_5, rectangle_3, level_1) {
+define("lib/level/level0", ["require", "exports", "lib/level/level"], function (require, exports, level_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.Level0 = void 0;
     class Level0 extends level_1.Level {
-        load(game) {
-            for (let i = 0; i < global_5.Global.GRID_ROWS; i++) {
-                for (let h = 1; h < 1 + (i / 10); h++) {
-                    game.walls.push(new wall_1.Wall(game, new rectangle_3.Rectangle(wall_1.Wall.WIDTH * i, global_5.Global.ROWTOP(h), wall_1.Wall.WIDTH, wall_1.Wall.WIDTH), "green"));
-                }
-            }
+        constructor() {
+            super(...arguments);
+            this.walls = new Map([
+                // This is super unreadable lol
+                [2, [5, 7]],
+                [1, [4, 5, 6, 7]],
+                [0, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]],
+            ]);
         }
     }
     exports.Level0 = Level0;
