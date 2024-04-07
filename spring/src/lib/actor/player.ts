@@ -77,7 +77,6 @@ export class Player extends Actor {
             }
             this.lastFacingLeft = true;
         }
-        console.log("acceleration: " + acceleration.toString);
         return acceleration;
     }
 

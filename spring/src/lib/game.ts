@@ -1,5 +1,7 @@
 import { Player } from "./actor/player";
 import { Wall } from "./actor/wall";
+import { Level } from "./level/level";
+import { Level0 } from "./level/level0";
 import { FPS } from "./util/fps";
 import { Global } from "./util/global";
 import { Input } from "./util/input";
@@ -28,6 +30,8 @@ export class Game {
 
     private static readonly JUMP_DURATION_MS: number = 300;
     private static readonly JUMP_SCREEN_BOUNCE: number = 100;
+    private currentLevel: Level;
+
     private bouncing: boolean = false;
     private bounceProgressMs: number = 0;
     private lerpBounceY(msSinceLastFrame: number): number {
@@ -74,6 +78,7 @@ export class Game {
             this.canvasContext.scale(scale, scale);
         }
 
+        this.currentLevel = new Level0();
         this.initalizeState();
         this.mode = MODE.READY;
         window.requestAnimationFrame(this.step.bind(this));
@@ -119,7 +124,6 @@ export class Game {
         let cameraY = this.lerpBounceY(this.msSinceLastFrame);
 
         this.camera = new Vector(cameraX, cameraY);
-        console.log("new camera location: " + this.camera.toString);
     }
 
     wallsInXInterval(xmin: number, xmax: number): Wall[] {
@@ -138,12 +142,7 @@ export class Game {
         this.particleSystems = [];
         this.player = new Player(this);
         this.mode = MODE.PLAY;
-
-        for (let i = 0; i < Global.GRID_ROWS; i++) {
-            for (let h = 1; h < 1 + (i / 10); h++) {
-                this.walls.push(new Wall(this, new Rectangle(Wall.WIDTH * i, Global.ROWTOP(h), Wall.WIDTH, Wall.WIDTH), "green"));
-            }
-        }
+        this.currentLevel.load(this);
     }
 
     private stepReady() {
@@ -209,7 +208,6 @@ export class Game {
                 break;
             case MODE.GAME_OVER:
                 if (this.showGameOver) {
-                    console.log("showing gameover");
                     ctx.fillStyle = "red";
                     ctx.fillText("GAME OVER", 20, 20);
                 }

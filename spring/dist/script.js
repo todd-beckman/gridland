@@ -501,7 +501,6 @@ define("lib/actor/player", ["require", "exports", "lib/util/global", "lib/util/i
                 }
                 this.lastFacingLeft = true;
             }
-            console.log("acceleration: " + acceleration.toString);
             return acceleration;
         }
         clampVelocity(velocity) {
@@ -625,6 +624,30 @@ define("lib/actor/wall", ["require", "exports", "lib/util/global", "lib/actor/ac
     Wall.WALL_MIN_HEIGHT = 100;
     Wall.COLOR = "brown";
 });
+define("lib/level/level", ["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.Level = void 0;
+    class Level {
+        get next() { return null; }
+    }
+    exports.Level = Level;
+});
+define("lib/level/level0", ["require", "exports", "lib/actor/wall", "lib/util/global", "lib/util/rectangle", "lib/level/level"], function (require, exports, wall_1, global_5, rectangle_3, level_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.Level0 = void 0;
+    class Level0 extends level_1.Level {
+        load(game) {
+            for (let i = 0; i < global_5.Global.GRID_ROWS; i++) {
+                for (let h = 1; h < 1 + (i / 10); h++) {
+                    game.walls.push(new wall_1.Wall(game, new rectangle_3.Rectangle(wall_1.Wall.WIDTH * i, global_5.Global.ROWTOP(h), wall_1.Wall.WIDTH, wall_1.Wall.WIDTH), "green"));
+                }
+            }
+        }
+    }
+    exports.Level0 = Level0;
+});
 define("lib/util/fps", ["require", "exports", "lib/util/with_cooldown"], function (require, exports, with_cooldown_2) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -656,7 +679,7 @@ define("lib/util/fps", ["require", "exports", "lib/util/with_cooldown"], functio
     FPS.DRAW_LEFT = 5;
     FPS.DRAW_TOP = 15;
 });
-define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", "lib/util/fps", "lib/util/global", "lib/util/input", "lib/util/rectangle", "lib/util/vector", "lib/util/with_cooldown"], function (require, exports, player_1, wall_1, fps_1, global_5, input_2, rectangle_3, vector_4, with_cooldown_3) {
+define("lib/game", ["require", "exports", "lib/actor/player", "lib/level/level0", "lib/util/fps", "lib/util/global", "lib/util/input", "lib/util/rectangle", "lib/util/vector", "lib/util/with_cooldown"], function (require, exports, player_1, level0_1, fps_1, global_6, input_2, rectangle_4, vector_4, with_cooldown_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.Game = void 0;
@@ -701,15 +724,16 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
             input_2.Input.init();
             this.canvas = document.getElementById("canvas");
             this.canvasContext = this.canvas.getContext("2d");
-            if (window.innerWidth < global_5.Global.SCREEN_WIDTH ||
-                window.innerHeight < global_5.Global.PLAY_AREA_HEIGHT) {
-                let scaleWidth = window.innerWidth / global_5.Global.SCREEN_WIDTH;
-                let scaleHeight = window.innerHeight / global_5.Global.PLAY_AREA_HEIGHT;
+            if (window.innerWidth < global_6.Global.SCREEN_WIDTH ||
+                window.innerHeight < global_6.Global.PLAY_AREA_HEIGHT) {
+                let scaleWidth = window.innerWidth / global_6.Global.SCREEN_WIDTH;
+                let scaleHeight = window.innerHeight / global_6.Global.PLAY_AREA_HEIGHT;
                 let scale = Math.min(scaleHeight, scaleWidth);
                 this.canvas.width *= scale;
                 this.canvas.height *= scale;
                 this.canvasContext.scale(scale, scale);
             }
+            this.currentLevel = new level0_1.Level0();
             this.initalizeState();
             this.mode = MODE.READY;
             window.requestAnimationFrame(this.step.bind(this));
@@ -721,13 +745,13 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
             let playerCenter = this.player.region.center;
             let wantX = playerCenter.x +
                 (this.player.lastFacingLeft ?
-                    global_5.Global.GOAL_CAMERA_FOCUS_LEFT :
-                    global_5.Global.GOAL_CAMERA_FOCUS_RIGHT);
+                    global_6.Global.GOAL_CAMERA_FOCUS_LEFT :
+                    global_6.Global.GOAL_CAMERA_FOCUS_RIGHT);
             let boundX = playerCenter.x +
                 (this.player.lastFacingLeft ?
-                    global_5.Global.BOUND_CAMERA_FOCUS_LEFT :
-                    global_5.Global.BOUND_CAMERA_FOCUS_RIGHT);
-            let cameraOffset = this.msSinceLastFrame * global_5.Global.CAMERA_SPEED_PER_MS;
+                    global_6.Global.BOUND_CAMERA_FOCUS_LEFT :
+                    global_6.Global.BOUND_CAMERA_FOCUS_RIGHT);
+            let cameraOffset = this.msSinceLastFrame * global_6.Global.CAMERA_SPEED_PER_MS;
             let cameraX = this.camera.x;
             if (this.player.lastFacingLeft) {
                 cameraX -= cameraOffset;
@@ -749,7 +773,6 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
             }
             let cameraY = this.lerpBounceY(this.msSinceLastFrame);
             this.camera = new vector_4.Vector(cameraX, cameraY);
-            console.log("new camera location: " + this.camera.toString);
         }
         wallsInXInterval(xmin, xmax) {
             return this.walls.filter(wall => {
@@ -765,11 +788,7 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
             this.particleSystems = [];
             this.player = new player_1.Player(this);
             this.mode = MODE.PLAY;
-            for (let i = 0; i < global_5.Global.GRID_ROWS; i++) {
-                for (let h = 1; h < 1 + (i / 10); h++) {
-                    this.walls.push(new wall_1.Wall(this, new rectangle_3.Rectangle(wall_1.Wall.WIDTH * i, global_5.Global.ROWTOP(h), wall_1.Wall.WIDTH, wall_1.Wall.WIDTH), "green"));
-                }
-            }
+            this.currentLevel.load(this);
         }
         stepReady() {
             if (input_2.Input.JUMP.held) {
@@ -798,10 +817,10 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
         }
         draw() {
             let buffer = document.createElement("canvas");
-            buffer.width = global_5.Global.PLAY_AREA_WIDTH;
-            buffer.height = global_5.Global.PLAY_AREA_HEIGHT;
+            buffer.width = global_6.Global.PLAY_AREA_WIDTH;
+            buffer.height = global_6.Global.PLAY_AREA_HEIGHT;
             let ctx = buffer.getContext("2d");
-            rectangle_3.Rectangle.PLAY_AREA.draw(ctx, vector_4.Vector.ZERO, global_5.Global.PLAYER_AREA_BACKGROUND_STYLE);
+            rectangle_4.Rectangle.PLAY_AREA.draw(ctx, vector_4.Vector.ZERO, global_6.Global.PLAYER_AREA_BACKGROUND_STYLE);
             this.player.draw(ctx, this.camera);
             if (this.mode == MODE.PLAY) {
                 this.walls.forEach(wall => wall.draw(ctx, this.camera));
@@ -812,17 +831,16 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
             this.canvasContext.drawImage(buffer, 0, 0);
         }
         drawHUD(ctx) {
-            rectangle_3.Rectangle.HUD_AREA.draw(ctx, vector_4.Vector.ZERO, global_5.Global.HUD_AREA_BACKGROUND_STYLE);
+            rectangle_4.Rectangle.HUD_AREA.draw(ctx, vector_4.Vector.ZERO, global_6.Global.HUD_AREA_BACKGROUND_STYLE);
             ctx.font = "12pt courier";
             switch (this.mode) {
                 case MODE.READY:
                 case MODE.GAME_OVER:
                     ctx.fillStyle = "white";
-                    ctx.fillText("Touch or spacebar to start.", 50, global_5.Global.PLAY_AREA_HEIGHT / 2 - 100);
+                    ctx.fillText("Touch or spacebar to start.", 50, global_6.Global.PLAY_AREA_HEIGHT / 2 - 100);
                     break;
                 case MODE.GAME_OVER:
                     if (this.showGameOver) {
-                        console.log("showing gameover");
                         ctx.fillStyle = "red";
                         ctx.fillText("GAME OVER", 20, 20);
                     }
@@ -854,7 +872,7 @@ define("lib/game", ["require", "exports", "lib/actor/player", "lib/actor/wall", 
             input_2.Input.onFrameEnd();
             this.draw();
             let frameDuration = window.performance.now() - this.frameTime;
-            let waitForNextFrame = global_5.Global.MAX_FRAMEFRATE - frameDuration;
+            let waitForNextFrame = global_6.Global.MAX_FRAMEFRATE - frameDuration;
             window.setTimeout(() => window.requestAnimationFrame(this.step.bind(this)), waitForNextFrame);
         }
     }
