@@ -322,9 +322,6 @@ define("lib/actor/actor", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.Actor = void 0;
-    /**
-     * Any game object.
-     */
     class Actor {
         step(msSinceLastFrame) { }
         draw(ctx, camera) { }
@@ -450,7 +447,7 @@ define("lib/util/particles", ["require", "exports", "lib/actor/actor", "lib/util
     exports.ParticleSystem = ParticleSystem;
     ParticleSystem.PARTICLE_SIZE = 3;
 });
-define("lib/actor/player", ["require", "exports", "lib/util/global", "lib/util/input", "lib/util/rectangle", "lib/util/vector", "lib/actor/actor"], function (require, exports, global_3, input_1, rectangle_2, vector_3, actor_2) {
+define("lib/actor/player", ["require", "exports", "lib/util/global", "lib/util/input", "lib/util/particles", "lib/util/rectangle", "lib/util/vector", "lib/actor/actor"], function (require, exports, global_3, input_1, particles_1, rectangle_2, vector_3, actor_2) {
     "use strict";
     var _a;
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -469,6 +466,8 @@ define("lib/actor/player", ["require", "exports", "lib/util/global", "lib/util/i
             super();
             this.lastFacingLeft = false;
             this.velocity = vector_3.Vector.ZERO;
+            this.landed = false;
+            this.pSpeed = false;
             this.game = game;
             this.region = _a.START_LOCATION;
         }
@@ -480,6 +479,7 @@ define("lib/actor/player", ["require", "exports", "lib/util/global", "lib/util/i
             if (input_1.Input.JUMP.held == 1 && this.canJump) {
                 acceleration = acceleration.addY(_a.JUMP_SPEED_PER_MS);
                 this.game.doJump();
+                this.landed = false;
             }
             if ((input_1.Input.RIGHT.held == 0) == (input_1.Input.LEFT.held == 0)) {
                 if (this.velocity.x < 0) {
@@ -490,22 +490,30 @@ define("lib/actor/player", ["require", "exports", "lib/util/global", "lib/util/i
                 }
             }
             if (input_1.Input.RIGHT.held && !input_1.Input.LEFT.held) {
-                acceleration = acceleration.addX(_a.HORIZONTAL_ACCELERATION_PER_MS);
+                if (this.velocity.y == 0 || this.velocity.x <= 0) {
+                    acceleration = acceleration.addX(_a.HORIZONTAL_ACCELERATION_PER_MS);
+                }
                 this.lastFacingLeft = false;
             }
             if (input_1.Input.LEFT.held && !input_1.Input.RIGHT.held) {
-                acceleration = acceleration.addX(-_a.HORIZONTAL_ACCELERATION_PER_MS);
+                if (this.velocity.y == 0 || this.velocity.x >= 0) {
+                    acceleration = acceleration.addX(-_a.HORIZONTAL_ACCELERATION_PER_MS);
+                }
                 this.lastFacingLeft = true;
             }
+            console.log("acceleration: " + acceleration.toString);
             return acceleration;
         }
         clampVelocity(velocity) {
             if (velocity.x > _a.MAX_SPEED_PERS_MS) {
+                this.pSpeed = true;
                 return new vector_3.Vector(_a.MAX_SPEED_PERS_MS, velocity.y);
             }
             else if (velocity.x < -_a.MAX_SPEED_PERS_MS) {
+                this.pSpeed = true;
                 return new vector_3.Vector(-_a.MAX_SPEED_PERS_MS, velocity.y);
             }
+            this.pSpeed = false;
             if (Math.abs(velocity.x) < _a.MIN_SPEED_PERS_MS) {
                 return new vector_3.Vector(0, velocity.y);
             }
@@ -549,16 +557,35 @@ define("lib/actor/player", ["require", "exports", "lib/util/global", "lib/util/i
             if (this.region.top >= global_3.Global.PLAY_AREA_HEIGHT) {
                 this.game.gameOver();
             }
+            let wasLanded = this.landed;
             this.velocity = this.clampVelocity(this.velocity.add(this.acceleration.scale(msSinceLastFrame)));
             let newRegion = this.findNextLocation();
-            // let newRegion = this.region.add(this.velocity);
             if (this.region.left == newRegion.left) {
                 this.velocity = new vector_3.Vector(0, this.velocity.y);
             }
             if (this.region.top == newRegion.top) {
                 this.velocity = new vector_3.Vector(this.velocity.x, 0);
+                this.landed = true;
+            }
+            if (this.landed && !wasLanded) {
+                this.spawnLandingDust();
+            }
+            if (this.pSpeed && this.velocity.y == 0) {
+                this.spawnSprintDust();
             }
             this.region = newRegion;
+        }
+        spawnSprintDust() {
+            if (this.velocity.x > 0) {
+                this.game.spawnParticleSystem(new particles_1.ParticleSystem("yellow", 5, 50, 100, new vector_3.Vector(this.region.left, this.region.bottom), vector_3.Vector.ZERO, -Math.PI * 7 / 8, -Math.PI, 6));
+            }
+            else {
+                this.game.spawnParticleSystem(new particles_1.ParticleSystem("yellow", 5, 50, 100, new vector_3.Vector(this.region.right, this.region.bottom), vector_3.Vector.ZERO, 0, -Math.PI / 8, 6));
+            }
+        }
+        spawnLandingDust() {
+            this.game.spawnParticleSystem(new particles_1.ParticleSystem("white", 10, 50, 100, new vector_3.Vector(this.region.right, this.region.bottom), vector_3.Vector.ZERO, 0, -Math.PI / 4, 4.5));
+            this.game.spawnParticleSystem(new particles_1.ParticleSystem("white", 10, 50, 100, new vector_3.Vector(this.region.left, this.region.bottom), vector_3.Vector.ZERO, -Math.PI * 3 / 4, -Math.PI, 4.5));
         }
         draw(ctx, camera) {
             this.region.draw(ctx, camera, "red");

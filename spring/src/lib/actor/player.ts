@@ -35,6 +35,8 @@ export class Player extends Actor {
     lastFacingLeft: boolean = false;
     velocity: Vector = Vector.ZERO;
     region: Rectangle;
+    private landed: boolean = false;
+    private pSpeed: boolean = false;
 
     private readonly game: Game;
 
@@ -54,6 +56,7 @@ export class Player extends Actor {
         if (Input.JUMP.held == 1 && this.canJump) {
             acceleration = acceleration.addY(Player.JUMP_SPEED_PER_MS);
             this.game.doJump();
+            this.landed = false;
         }
         if ((Input.RIGHT.held == 0) == (Input.LEFT.held == 0)) {
             if (this.velocity.x < 0) {
@@ -63,22 +66,30 @@ export class Player extends Actor {
             }
         }
         if (Input.RIGHT.held && !Input.LEFT.held) {
-            acceleration = acceleration.addX(Player.HORIZONTAL_ACCELERATION_PER_MS);
+            if (this.velocity.y == 0 || this.velocity.x <= 0) {
+                acceleration = acceleration.addX(Player.HORIZONTAL_ACCELERATION_PER_MS);
+            }
             this.lastFacingLeft = false;
         }
         if (Input.LEFT.held && !Input.RIGHT.held) {
-            acceleration = acceleration.addX(-Player.HORIZONTAL_ACCELERATION_PER_MS);
+            if (this.velocity.y == 0 || this.velocity.x >= 0) {
+                acceleration = acceleration.addX(-Player.HORIZONTAL_ACCELERATION_PER_MS);
+            }
             this.lastFacingLeft = true;
         }
+        console.log("acceleration: " + acceleration.toString);
         return acceleration;
     }
 
     private clampVelocity(velocity: Vector): Vector {
         if (velocity.x > Player.MAX_SPEED_PERS_MS) {
+            this.pSpeed = true;
             return new Vector(Player.MAX_SPEED_PERS_MS, velocity.y);
         } else if (velocity.x < -Player.MAX_SPEED_PERS_MS) {
+            this.pSpeed = true;
             return new Vector(-Player.MAX_SPEED_PERS_MS, velocity.y);
         }
+        this.pSpeed = false;
         if (Math.abs(velocity.x) < Player.MIN_SPEED_PERS_MS) {
             return new Vector(0, velocity.y);
         }
@@ -128,9 +139,10 @@ export class Player extends Actor {
             this.game.gameOver();
         }
 
+        let wasLanded = this.landed;
+
         this.velocity = this.clampVelocity(this.velocity.add(this.acceleration.scale(msSinceLastFrame)));
         let newRegion = this.findNextLocation();
-        // let newRegion = this.region.add(this.velocity);
 
         if (this.region.left == newRegion.left) {
             this.velocity = new Vector(0, this.velocity.y);
@@ -138,9 +150,66 @@ export class Player extends Actor {
 
         if (this.region.top == newRegion.top) {
             this.velocity = new Vector(this.velocity.x, 0);
+            this.landed = true;
+        }
+
+        if (this.landed && !wasLanded) {
+            this.spawnLandingDust();
+        }
+        if (this.pSpeed && this.velocity.y == 0) {
+            this.spawnSprintDust();
         }
 
         this.region = newRegion;
+    }
+
+    private spawnSprintDust(): void {
+        if (this.velocity.x > 0) {
+            this.game.spawnParticleSystem(new ParticleSystem(
+                "yellow",
+                5,
+                50, 100,
+                new Vector(this.region.left, this.region.bottom),
+                Vector.ZERO,
+                -Math.PI * 7 / 8,
+                -Math.PI,
+                6,
+            ));
+        } else {
+            this.game.spawnParticleSystem(new ParticleSystem(
+                "yellow",
+                5,
+                50, 100,
+                new Vector(this.region.right, this.region.bottom),
+                Vector.ZERO,
+                0,
+                -Math.PI / 8,
+                6,
+            ));
+        }
+
+    }
+
+    private spawnLandingDust(): void {
+        this.game.spawnParticleSystem(new ParticleSystem(
+            "white",
+            10,
+            50, 100,
+            new Vector(this.region.right, this.region.bottom),
+            Vector.ZERO,
+            0, -Math.PI / 4,
+            4.5,
+        ));
+        this.game.spawnParticleSystem(new ParticleSystem(
+            "white",
+            10,
+            50, 100,
+            new Vector(this.region.left, this.region.bottom),
+            Vector.ZERO,
+            -Math.PI * 3 / 4,
+            -Math.PI,
+            4.5,
+        ));
     }
 
     override draw(ctx: CanvasRenderingContext2D, camera: Vector): void {
