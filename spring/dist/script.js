@@ -631,11 +631,22 @@ define("lib/level/level", ["require", "exports", "lib/actor/wall", "lib/util/glo
     class Level {
         get nextLevel() { return null; }
         load(game) {
-            this.walls.forEach((wallList, rowNum) => {
-                for (let wall of wallList) {
-                    game.walls.push(new wall_1.Wall(game, new rectangle_3.Rectangle(wall_1.Wall.WIDTH * wall, global_5.Global.ROWTOP(rowNum + 1), wall_1.Wall.WIDTH, wall_1.Wall.WIDTH), "green"));
+            let rows = this.serialized.split("\n");
+            for (let i = 0; i < rows.length; i++) {
+                let row = rows[i];
+                // This off by one is intentional
+                // This makes things render on the first visible row, as 0 is just out of sight.
+                let rowNum = rows.length - i;
+                console.log("adding wall at row " + rowNum + " which is: " + row);
+                for (let col = 0; col < row.length; col++) {
+                    switch (row.charAt(col)) {
+                        case "G":
+                            game.walls.push(new wall_1.Wall(game, new rectangle_3.Rectangle(wall_1.Wall.WIDTH * col, global_5.Global.ROWTOP(rowNum), wall_1.Wall.WIDTH, wall_1.Wall.WIDTH), "green"));
+                            break;
+                        default:
+                    }
                 }
-            });
+            }
         }
     }
     exports.Level = Level;
@@ -645,17 +656,17 @@ define("lib/level/level0", ["require", "exports", "lib/level/level"], function (
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.Level0 = void 0;
     class Level0 extends level_1.Level {
-        constructor() {
-            super(...arguments);
-            this.walls = new Map([
-                // This is super unreadable lol
-                [2, [5, 7]],
-                [1, [4, 5, 6, 7]],
-                [0, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]],
-            ]);
+        get serialized() {
+            return Level0.SERIALIZED;
         }
     }
     exports.Level0 = Level0;
+    Level0.SERIALIZED = `
+                  G
+                  G                              G
+                 GG                              G
+                GGG               GG  GG         G
+GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG  GGGGGGGGGGGG`;
 });
 define("lib/util/fps", ["require", "exports", "lib/util/with_cooldown"], function (require, exports, with_cooldown_2) {
     "use strict";
